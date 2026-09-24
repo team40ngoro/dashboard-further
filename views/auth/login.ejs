@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="brand-header">
+        <div class="brand-logo-badge">CPI</div>
+        <h1 class="brand-title">Food Division</h1>
+        <p class="brand-subtitle">Dashboard Laporan Pengendalian Produk (LPP)</p>
+      </div>
+
+      <% if (error) { %>
+        <div class="alert alert-danger" id="login-error-alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span><%= error %></span>
+        </div>
+      <% } %>
+
+      <form action="/login" method="POST" class="auth-form" id="login-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <div class="input-wrapper">
+            <input type="text" id="username" name="username" value="<%= username %>" placeholder="admin.pusat / uploader.cikande" required autofocus>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="password" name="password" placeholder="••••••••" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">
+          Masuk ke Dashboard
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p class="demo-hints">
+          <strong>Demo Akun Tersedia:</strong><br>
+          • Pusat: <code>admin.pusat</code> / <code>password123</code><br>
+          • Analis: <code>analis.pusat</code> / <code>password123</code><br>
+          • Cabang: <code>uploader.cikande</code> / <code>password123</code>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
