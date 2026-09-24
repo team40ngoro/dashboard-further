@@ -1,5 +1,5 @@
 /**
- * LPP Food Division Interactive Dashboard Controller
+ * LPP Food Division Interactive Dashboard Controller (Light Mode Optimized)
  */
 
 let outputChartInstance = null;
@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initCharts(metrics) {
-  Chart.defaults.color = '#94a3b8';
-  Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
+  Chart.defaults.color = '#475569';
+  Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.07)';
   Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
 
   // 1. Chart Output vs Material Trend
@@ -60,8 +60,8 @@ function initCharts(metrics) {
             type: 'bar',
             label: 'Output Baik (Kg)',
             data: metrics.charts.outputTrend.outputData || [],
-            backgroundColor: 'rgba(16, 185, 129, 0.7)',
-            borderColor: '#10b981',
+            backgroundColor: 'rgba(5, 150, 105, 0.8)',
+            borderColor: '#059669',
             borderWidth: 1,
             borderRadius: 6
           },
@@ -69,12 +69,13 @@ function initCharts(metrics) {
             type: 'line',
             label: 'Total Bahan Baku (Kg)',
             data: metrics.charts.outputTrend.materialData || [],
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            borderColor: '#3b82f6',
-            borderWidth: 2,
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            borderColor: '#2563eb',
+            borderWidth: 2.5,
             tension: 0.3,
             fill: false,
-            pointRadius: 4
+            pointRadius: 4,
+            pointBackgroundColor: '#2563eb'
           }
         ]
       },
@@ -101,7 +102,7 @@ function initCharts(metrics) {
     if (rejectsChartInstance) rejectsChartInstance.destroy();
     const colors = [
       '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', 
-      '#ec4899', '#14b8a6', '#64748b', '#e11d48'
+      '#ec4899', '#0d9488', '#64748b', '#e11d48'
     ];
     rejectsChartInstance = new Chart(ctxRejects, {
       type: 'doughnut',
@@ -110,7 +111,8 @@ function initCharts(metrics) {
         datasets: [{
           data: metrics.charts.rejectsBreakdown.data || [],
           backgroundColor: colors.slice(0, (metrics.charts.rejectsBreakdown.labels || []).length),
-          borderWidth: 0
+          borderWidth: 2,
+          borderColor: '#ffffff'
         }]
       },
       options: {
@@ -136,13 +138,13 @@ function initCharts(metrics) {
         datasets: [{
           label: `${mTrend?.paramName || 'Parameter'} (${mTrend?.unit || ''})`,
           data: mTrend?.values || [],
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          borderWidth: 2,
+          borderColor: '#d97706',
+          backgroundColor: 'rgba(217, 119, 6, 0.08)',
+          borderWidth: 2.5,
           fill: true,
           tension: 0.25,
           pointRadius: 4,
-          pointBackgroundColor: '#f59e0b'
+          pointBackgroundColor: '#d97706'
         }]
       },
       options: {
