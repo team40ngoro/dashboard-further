@@ -1,0 +1,85 @@
+<%- include('../layouts/header', { title: title }) %>
+<%- include('../layouts/navbar', { activePage: 'branches' }) %>
+
+<main class="main-content">
+  <div class="content-header">
+    <h1 class="page-title">Manajemen Cabang Produksi</h1>
+    <p class="page-subtitle">Kelola daftar cabang Food Division yang terdaftar dalam sistem.</p>
+  </div>
+
+  <% if (successMessage) { %>
+    <div class="alert alert-success mb-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span><%= successMessage %></span>
+    </div>
+  <% } %>
+
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger mb-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span><%= errorMessage %></span>
+    </div>
+  <% } %>
+
+  <div class="upload-grid">
+    <!-- Form Tambah Cabang -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Tambah Cabang Baru</h3>
+      </div>
+      <div class="card-body">
+        <form action="/admin/branches" method="POST">
+          <div class="form-group mb-3">
+            <label for="code" class="form-label font-semibold">Kode Cabang</label>
+            <input type="text" name="code" id="code" class="form-input" placeholder="Contoh: PLM-01" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="name" class="form-label font-semibold">Nama Pabrik / Cabang</label>
+            <input type="text" name="name" id="name" class="form-input" placeholder="Contoh: CPI Food Palembang" required>
+          </div>
+
+          <div class="form-group mb-4">
+            <label for="city" class="form-label font-semibold">Kota / Lokasi</label>
+            <input type="text" name="city" id="city" class="form-input" placeholder="Contoh: Palembang">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            Simpan Cabang Baru
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tabel Daftar Cabang -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Daftar Cabang Aktif (<%= branches.length %>)</h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Kode</th>
+              <th>Nama Cabang</th>
+              <th>Kota</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% branches.forEach(b => { %>
+              <tr>
+                <td>#<%= b.id %></td>
+                <td><span class="badge badge-branch"><%= b.code %></span></td>
+                <td class="font-bold"><%= b.name %></td>
+                <td><%= b.city || '-' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

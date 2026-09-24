@@ -1,0 +1,108 @@
+<%- include('../layouts/header', { title: title }) %>
+<%- include('../layouts/navbar', { activePage: 'users' }) %>
+
+<main class="main-content">
+  <div class="content-header">
+    <h1 class="page-title">Manajemen Akun Pengguna</h1>
+    <p class="page-subtitle">Kelola akses, peran (RBAC), dan penugasan cabang untuk operator serta analis.</p>
+  </div>
+
+  <% if (successMessage) { %>
+    <div class="alert alert-success mb-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span><%= successMessage %></span>
+    </div>
+  <% } %>
+
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger mb-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span><%= errorMessage %></span>
+    </div>
+  <% } %>
+
+  <div class="upload-grid">
+    <!-- Form Tambah User -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Buat Pengguna Baru</h3>
+      </div>
+      <div class="card-body">
+        <form action="/admin/users" method="POST">
+          <div class="form-group mb-3">
+            <label for="username" class="form-label font-semibold">Username</label>
+            <input type="text" name="username" id="username" class="form-input" placeholder="contoh: uploader.medan" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="fullName" class="form-label font-semibold">Nama Lengkap</label>
+            <input type="text" name="fullName" id="fullName" class="form-input" placeholder="contoh: Budi Santoso" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="password" class="form-label font-semibold">Password</label>
+            <input type="password" name="password" id="password" class="form-input" placeholder="••••••••" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="role" class="form-label font-semibold">Peran / Hak Akses</label>
+            <select name="role" id="role" class="form-select" required>
+              <option value="<%= roles.PENGUNGGAH_CABANG %>"><%= roleLabels.pengunggah_cabang %></option>
+              <option value="<%= roles.PEMBACA_CABANG %>"><%= roleLabels.pembaca_cabang %></option>
+              <option value="<%= roles.ANALIS_PUSAT %>"><%= roleLabels.analis_pusat %></option>
+              <option value="<%= roles.ADMIN_PUSAT %>"><%= roleLabels.admin_pusat %></option>
+            </select>
+          </div>
+
+          <div class="form-group mb-4" id="branch-select-group">
+            <label for="branchId" class="form-label font-semibold">Cabang Penugasan</label>
+            <select name="branchId" id="branchId" class="form-select">
+              <option value="">-- Tidak Ada (Pusat) --</option>
+              <% branches.forEach(b => { %>
+                <option value="<%= b.id %>"><%= b.code %> - <%= b.name %></option>
+              <% }) %>
+            </select>
+            <small class="form-hint">Wajib dipilih untuk peran Pengunggah dan Pembaca Cabang.</small>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            Buat Akun Pengguna
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tabel Daftar Pengguna -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Daftar Pengguna Sistem (<%= users.length %>)</h3>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Nama Lengkap</th>
+                <th>Peran</th>
+                <th>Cabang</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% users.forEach(u => { %>
+                <tr>
+                  <td class="font-bold"><code><%= u.username %></code></td>
+                  <td><%= u.full_name %></td>
+                  <td><span class="badge badge-stage"><%= u.role.replace('_', ' ') %></span></td>
+                  <td><%= u.branch_name ? u.branch_name : 'Kantor Pusat' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

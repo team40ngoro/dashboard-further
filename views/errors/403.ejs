@@ -1,0 +1,14 @@
+<%- include('../layouts/header', { title: title || '403 - Akses Ditolak' }) %>
+
+<main class="main-content text-center py-12">
+  <div class="card max-w-2xl py-12">
+    <div class="card-body">
+      <h1 class="text-danger font-bold" style="font-size: 4rem;">403</h1>
+      <h2 class="page-title mb-2">Akses Ditolak</h2>
+      <p class="text-secondary mb-4"><%= message || 'Anda tidak memiliki izin untuk mengakses halaman atau data ini.' %></p>
+      <a href="/dashboard" class="btn btn-primary">Kembali ke Dashboard</a>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>
