@@ -1,11 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('Dashboard Analytics & Chart Metrics Aggregation Test', async (t) => {
+test('Dashboard Analytics & Multi-Chart Metrics Aggregation Test', async (t) => {
   const { getDashboardMetrics } = require('../services/dashboardService');
   const { saveBatchTransaction } = require('../controllers/uploadController');
 
-  // Insert test batches for branch 1 and branch 2
+  // Insert test batches for branch 1
   await saveBatchTransaction({
     batchData: {
       identity: {
@@ -13,21 +13,25 @@ test('Dashboard Analytics & Chart Metrics Aggregation Test', async (t) => {
         productCode: 'NUG-500',
         productionDate: '2026-09-24',
         line: 'Line 1',
-        batchNumber: 'BATCH-METRIC-01',
+        batchNumber: 'BATCH-METRIC-TEST-01',
         workHours: 8.0,
         meatPercentage: 55.0
       },
-      materials: [{ category: 'bahan_baku', itemName: 'SBB', weightKg: 1000.0 }],
-      totalMaterialKg: 1000.0,
+      materials: [
+        { category: 'bahan_baku', itemName: 'SBB', weightKg: 1000.0 },
+        { category: 'batter', itemName: 'Batter', weightKg: 100.0 }
+      ],
+      totalMaterialKg: 1100.0,
       machineMetrics: [
-        { machineName: 'Fryer', parameterName: 'Suhu Aktual', unit: '°C', metricType: 'actual', valueNumeric: 182.0, valueText: null }
+        { machineName: 'Fryer', parameterName: 'Suhu Aktual', unit: '°C', metricType: 'actual', valueNumeric: 182.0, valueText: null },
+        { machineName: 'Ruang', parameterName: 'Suhu ruang Meatprep', unit: '°C', metricType: 'actual', valueNumeric: 12.5, valueText: null }
       ],
       rejects: [{ stage: 'cooking', rejectType: 'Gosong', weightKg: 20.0 }],
       totalRejectKg: 20.0,
-      outputs: [{ palletNo: 'P1', weightKg: 980.0 }],
-      outputGoodKg: 980.0,
-      calculatedRejectPct: 2.0,
-      fileHash: 'hash_m1'
+      outputs: [{ palletNo: 'P1', weightKg: 1050.0 }],
+      outputGoodKg: 1050.0,
+      calculatedRejectPct: 1.87,
+      fileHash: 'hash_m_test_1'
     },
     branchId: 1,
     userId: 3
@@ -37,25 +41,34 @@ test('Dashboard Analytics & Chart Metrics Aggregation Test', async (t) => {
     const metrics = await getDashboardMetrics({}, 1); // Scoped to Branch 1
     assert.ok(metrics, 'Metrics object should be returned');
     assert.ok(metrics.kpis.totalBatches >= 1);
-    assert.ok(metrics.kpis.totalMaterialKg >= 1000.0);
-    assert.ok(metrics.kpis.totalOutputKg >= 980.0);
+    assert.ok(metrics.kpis.totalMaterialKg >= 1100.0);
+    assert.ok(metrics.kpis.totalOutputKg >= 1050.0);
     assert.ok(metrics.kpis.totalRejectKg >= 20.0);
-    assert.ok(metrics.kpis.globalRejectPct > 0);
+    assert.ok(metrics.kpis.globalYieldPct > 0);
   });
 
-  await t.test('returns structured chart series for Output vs Material, Rejects, and Machines', async () => {
+  await t.test('returns structured multi-panel chart series for production & machinery groups', async () => {
     const metrics = await getDashboardMetrics({}, 1);
     
-    // Output vs Material chart data
+    // 1. Output vs Material chart data
     assert.ok(metrics.charts.outputTrend.labels.length > 0);
     assert.ok(metrics.charts.outputTrend.outputData.length > 0);
     assert.ok(metrics.charts.outputTrend.materialData.length > 0);
 
-    // Rejects Breakdown chart data
-    assert.ok(metrics.charts.rejectsBreakdown.labels.length > 0);
-    assert.ok(metrics.charts.rejectsBreakdown.data.length > 0);
+    // 2. Materials Composition chart data
+    assert.ok(Array.isArray(metrics.charts.materialsComposition.labels));
+    assert.ok(Array.isArray(metrics.charts.materialsComposition.data));
 
-    // Machine Metrics chart data
-    assert.ok(Array.isArray(metrics.availableMachineParams));
+    // 3. Production Yield chart data
+    assert.ok(Array.isArray(metrics.charts.productionYield.labels));
+    assert.ok(Array.isArray(metrics.charts.productionYield.yieldData));
+
+    // 4. Machine Parameter Groups
+    assert.ok(metrics.charts.tempCriticalZone, 'tempCriticalZone should exist');
+    assert.ok(metrics.charts.mixerPrep, 'mixerPrep should exist');
+    assert.ok(metrics.charts.fryerMetrics, 'fryerMetrics should exist');
+    assert.ok(metrics.charts.batterStation, 'batterStation should exist');
+    assert.ok(metrics.charts.hltMetrics, 'hltMetrics should exist');
+    assert.ok(metrics.charts.formingMetrics, 'formingMetrics should exist');
   });
 });

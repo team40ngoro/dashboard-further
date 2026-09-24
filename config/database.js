@@ -256,24 +256,40 @@ function runMockQuery(sql, params = []) {
 
   // SELECT from batch_materials
   if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_MATERIALS')) {
+    if (upper.includes('IN (')) {
+      const ids = params.map(Number).filter(n => !isNaN(n));
+      return mockStorage.batch_materials.filter(m => ids.includes(m.batch_id));
+    }
     const batchId = params[0];
     return mockStorage.batch_materials.filter(m => m.batch_id === Number(batchId));
   }
 
   // SELECT from batch_machine_metrics
   if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_MACHINE_METRICS')) {
+    if (upper.includes('IN (')) {
+      const ids = params.map(Number).filter(n => !isNaN(n));
+      return mockStorage.batch_machine_metrics.filter(m => ids.includes(m.batch_id));
+    }
     const batchId = params[0];
     return mockStorage.batch_machine_metrics.filter(m => m.batch_id === Number(batchId));
   }
 
   // SELECT from batch_rejects
   if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_REJECTS')) {
+    if (upper.includes('IN (')) {
+      const ids = params.map(Number).filter(n => !isNaN(n));
+      return mockStorage.batch_rejects.filter(r => ids.includes(r.batch_id));
+    }
     const batchId = params[0];
     return mockStorage.batch_rejects.filter(r => r.batch_id === Number(batchId));
   }
 
   // SELECT from batch_outputs
   if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_OUTPUTS')) {
+    if (upper.includes('IN (')) {
+      const ids = params.map(Number).filter(n => !isNaN(n));
+      return mockStorage.batch_outputs.filter(o => ids.includes(o.batch_id));
+    }
     const batchId = params[0];
     return mockStorage.batch_outputs.filter(o => o.batch_id === Number(batchId));
   }

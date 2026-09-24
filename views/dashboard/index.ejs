@@ -6,7 +6,7 @@
   <div class="content-header flex-between">
     <div>
       <h1 class="page-title">Dashboard Pengendalian Produk</h1>
-      <p class="page-subtitle">Pemantauan parameter proses aktual, penggunaan bahan baku, dan rasio rijek lintas cabang Food Division.</p>
+      <p class="page-subtitle">Pemantauan menyeluruh volume produksi, pemakaian bahan baku, dan seluruh parameter proses mesin Food Division.</p>
     </div>
     <div class="header-actions">
       <% if (currentUser.role === 'admin_pusat' || currentUser.role === 'pengunggah_cabang') { %>
@@ -18,7 +18,7 @@
     </div>
   </div>
 
-  <!-- Interactive Filters Toolbar -->
+  <!-- Interactive Global Filters Toolbar -->
   <div class="card filter-card mb-4">
     <form id="dashboard-filter-form" class="filter-form">
       <% if (isCentralUser) { %>
@@ -58,18 +58,6 @@
         </select>
       </div>
 
-      <div class="filter-col">
-        <label for="machineParam" class="filter-label">Parameter Mesin</label>
-        <select name="machineParam" id="machineParam" class="form-select">
-          <option value="">Pilih Parameter Mesin</option>
-          <% metrics.availableMachineParams.forEach(p => { %>
-            <option value="<%= p.key %>" <%= (filters.machineParam === p.key || (!filters.machineParam && p.key === metrics.charts.machineMetricsTrend?.paramName)) ? 'selected' : '' %>>
-              <%= p.key %> (<%= p.unit %>)
-            </option>
-          <% }) %>
-        </select>
-      </div>
-
       <div class="filter-col filter-actions">
         <button type="submit" class="btn btn-secondary">Terapkan Filter</button>
       </div>
@@ -86,7 +74,7 @@
     <div class="kpi-card">
       <div class="kpi-label">TOTAL BAHAN BAKU</div>
       <div class="kpi-value" id="kpi-total-material"><%= metrics.kpis.totalMaterialKg.toLocaleString('id-ID') %> kg</div>
-      <div class="kpi-sub">Input bahan baku dan adonan</div>
+      <div class="kpi-sub">Total input adonan & material</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">TOTAL OUTPUT BAIK</div>
@@ -94,19 +82,24 @@
       <div class="kpi-sub">Produk kemasan jadi siap kirim</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">RASIO RIJEK GLOBAL</div>
-      <div class="kpi-value <%= metrics.kpis.globalRejectPct > 3 ? 'text-danger' : 'text-warning' %>" id="kpi-reject-pct">
-        <%= metrics.kpis.globalRejectPct %>%
+      <div class="kpi-label">EFISIENSI RENDEMEN</div>
+      <div class="kpi-value <%= (metrics.kpis.globalYieldPct >= 95) ? 'text-primary' : 'text-warning' %>" id="kpi-yield-pct">
+        <%= metrics.kpis.globalYieldPct %>%
       </div>
-      <div class="kpi-sub" id="kpi-total-reject">Total rijek: <%= metrics.kpis.totalRejectKg.toLocaleString('id-ID') %> kg</div>
+      <div class="kpi-sub" id="kpi-total-reject">Rasio rijek: <%= metrics.kpis.globalRejectPct %>% (<%= metrics.kpis.totalRejectKg.toLocaleString('id-ID') %> kg)</div>
     </div>
   </div>
 
-  <!-- Charts Row 1: Output vs Material & Rejects Composition -->
-  <div class="charts-grid mb-4">
-    <div class="card chart-card">
+  <!-- SECTION A: Ringkasan Produksi & Bahan Baku (3 Compact Cards) -->
+  <div class="dashboard-section-heading">
+    <span class="section-tag">Bagian A</span>
+    <h2 class="section-title-text">Volume Produksi dan Komposisi Bahan Baku</h2>
+  </div>
+
+  <div class="grid-3-cols mb-4">
+    <div class="compact-chart-card">
       <div class="card-header">
-        <h3 class="card-title">Tren Output Produk vs Total Bahan Baku</h3>
+        <h3 class="card-title">Output Produk vs Bahan Baku (Kg)</h3>
       </div>
       <div class="card-body">
         <div class="chart-container">
@@ -115,26 +108,105 @@
       </div>
     </div>
 
-    <div class="card chart-card">
+    <div class="compact-chart-card">
       <div class="card-header">
-        <h3 class="card-title">Komposisi Jenis Rijek</h3>
+        <h3 class="card-title">Komposisi Bahan Baku Utama</h3>
       </div>
       <div class="card-body">
         <div class="chart-container">
-          <canvas id="chartRejectsBreakdown"></canvas>
+          <canvas id="chartMaterialsComposition"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">Tren Efisiensi Rendemen per Batch (%)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartProductionYield"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Charts Row 2: Machine Parameters Actual Trend -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h3 class="card-title">Tren Nilai Aktual Parameter Mesin (EAV)</h3>
+  <!-- SECTION B: Parameter Mesin & Pengendalian Proses (6 Compact Cards) -->
+  <div class="dashboard-section-heading">
+    <span class="section-tag">Bagian B</span>
+    <h2 class="section-title-text">Parameter Mesin dan Pengendalian Suhu Proses</h2>
+  </div>
+
+  <div class="grid-3-cols mb-4">
+    <!-- 1. Suhu Ruang & Area Kritis -->
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">Suhu Ruang & Area Kritis (°C)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartTempCritical"></canvas>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      <div class="chart-container" style="height: 280px;">
-        <canvas id="chartMachineTrend"></canvas>
+
+    <!-- 2. Mixer & Preparasi Adonan -->
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">Mixer & Bowl Cutter (Suhu & RPM)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartMixerPrep"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Penggorengan / Fryer -->
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">Penggorengan / Fryer (°C & TPM)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartFryerMetrics"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Stasiun Batter -->
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">Stasiun Batter (Suhu, Viskositas, Garam)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartBatterStation"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. HLT Continuous Cooker -->
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">HLT Pemasakan Daging (°C)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartHltMetrics"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Forming & Revo -->
+    <div class="compact-chart-card">
+      <div class="card-header">
+        <h3 class="card-title">Mesin Forming & Revo (Speed & Bar)</h3>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="chartFormingMetrics"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -157,6 +229,7 @@
               <th>Lini</th>
               <th class="text-right">Bahan (Kg)</th>
               <th class="text-right">Output (Kg)</th>
+              <th class="text-right">% Rendemen</th>
               <th class="text-right">% Rijek</th>
               <th>Aksi</th>
             </tr>
@@ -164,12 +237,16 @@
           <tbody>
             <% if (metrics.batchesSummaryTable.length === 0) { %>
               <tr>
-                <td colspan="9" class="text-center py-6 text-muted">
+                <td colspan="10" class="text-center py-6 text-muted">
                   Tidak ada batch yang ditemukan untuk kriteria filter saat ini.
                 </td>
               </tr>
             <% } %>
-            <% metrics.batchesSummaryTable.forEach(b => { %>
+            <% metrics.batchesSummaryTable.forEach(b => { 
+                const matKg = Number(b.total_material_kg) || 0;
+                const outKg = Number(b.output_good_kg) || 0;
+                const yieldRate = matKg > 0 ? ((outKg / matKg) * 100).toFixed(1) : 0;
+            %>
               <tr>
                 <td class="font-bold text-primary">
                   <a href="/batches/<%= b.id %>" class="table-link"><%= b.batch_number %></a>
@@ -181,9 +258,10 @@
                   <div class="text-xs text-muted"><%= b.product_code %></div>
                 </td>
                 <td><%= b.line %></td>
-                <td class="text-right"><%= Number(b.total_material_kg).toLocaleString('id-ID') %></td>
-                <td class="text-right font-semibold text-success"><%= Number(b.output_good_kg).toLocaleString('id-ID') %></td>
-                <td class="text-right <%= Number(b.calculated_reject_pct) > 3 ? 'text-danger font-bold' : '' %>">
+                <td class="text-right"><%= matKg.toLocaleString('id-ID') %></td>
+                <td class="text-right font-semibold text-success"><%= outKg.toLocaleString('id-ID') %></td>
+                <td class="text-right font-semibold text-primary"><%= yieldRate %>%</td>
+                <td class="text-right <%= Number(b.calculated_reject_pct) > 3 ? 'text-danger font-bold' : 'text-muted' %>">
                   <%= b.calculated_reject_pct %>%
                 </td>
                 <td>
