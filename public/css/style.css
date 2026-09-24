@@ -82,6 +82,13 @@ body {
   color: var(--text-primary);
 }
 
+.brand-logo-img {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
 .brand-badge {
   background: #dc2626;
   color: #ffffff;
@@ -641,6 +648,14 @@ body {
 .brand-header {
   text-align: center;
   margin-bottom: 1.75rem;
+}
+
+.login-logo-img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 0.75rem auto;
 }
 
 .brand-logo-badge {
