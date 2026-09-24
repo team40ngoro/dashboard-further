@@ -211,10 +211,18 @@ async function generateSampleExcel(outputPath, customData = {}) {
   wsBelakang.getCell('H23').value = 115;
   wsBelakang.getCell('I23').value = 2300.0;
 
-  await wb.xlsx.writeFile(outputPath);
-  return outputPath;
+  if (outputPath) {
+    await wb.xlsx.writeFile(outputPath);
+    return outputPath;
+  }
+  return await wb.xlsx.writeBuffer();
+}
+
+async function generateSampleExcelBuffer(customData = {}) {
+  return await generateSampleExcel(null, customData);
 }
 
 module.exports = {
-  generateSampleExcel
+  generateSampleExcel,
+  generateSampleExcelBuffer
 };

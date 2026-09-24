@@ -9,6 +9,7 @@ const { ROLES } = require('../config/constants');
 const uploadRoles = [ROLES.ADMIN_PUSAT, ROLES.PENGUNGGAH_CABANG];
 
 router.get('/upload', requireAuth, requireRole(uploadRoles), uploadController.renderUploadForm);
+router.get('/upload/sample-template', requireAuth, requireRole(uploadRoles), uploadController.downloadSampleTemplate);
 router.post('/upload/process', requireAuth, requireRole(uploadRoles), uploadMiddleware.single('lppFile'), uploadController.handleUploadProcess);
 router.get('/upload/preview', requireAuth, requireRole(uploadRoles), uploadController.renderPreview);
 router.post('/upload/commit', requireAuth, requireRole(uploadRoles), uploadController.handleConfirmCommit);

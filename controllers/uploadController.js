@@ -239,6 +239,27 @@ const uploadController = {
   handleCancel: (req, res) => {
     delete req.session.pendingBatch;
     res.redirect('/upload');
+  },
+
+  downloadSampleTemplate: async (req, res) => {
+    try {
+      const { generateSampleExcelBuffer } = require('../services/sampleExcelGenerator');
+      const todayStr = new Date().toISOString().split('T')[0];
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      const buffer = await generateSampleExcelBuffer({
+        productName: 'NUGGET AYAM 500G',
+        productCode: 'NUG-500',
+        productionDate: todayStr,
+        line: 'Line 1',
+        batchNumber: `BATCH-${todayStr.replace(/-/g, '')}-${randomSuffix}`
+      });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="Contoh_LPP_FP_REV_2.xlsx"');
+      res.send(buffer);
+    } catch (err) {
+      console.error('Error downloading sample template:', err);
+      res.redirect('/upload');
+    }
   }
 };
 
