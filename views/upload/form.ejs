@@ -1,0 +1,138 @@
+<%- include('../layouts/header', { title: title }) %>
+<%- include('../layouts/navbar', { activePage: 'upload' }) %>
+
+<main class="main-content">
+  <div class="content-header">
+    <div>
+      <h1 class="page-title">Unggah Form LPP Excel</h1>
+      <p class="page-subtitle">Unggah formulir Laporan Pengendalian Produk (.xlsx) untuk diekstraksi dan divalidasi ke sistem.</p>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span><%= error %></span>
+    </div>
+  <% } %>
+
+  <div class="upload-grid">
+    <div class="card upload-card">
+      <div class="card-header">
+        <h2 class="card-title">Pilih Berkas LPP</h2>
+      </div>
+      <div class="card-body">
+        <form action="/upload/process" method="POST" enctype="multipart/form-data" id="upload-form">
+          <% if (currentUser.role === 'admin_pusat' || currentUser.role === 'analis_pusat') { %>
+            <div class="form-group mb-4">
+              <label for="branchId" class="form-label font-semibold">Target Cabang Produksi</label>
+              <select name="branchId" id="branchId" class="form-select" required>
+                <% branches.forEach(b => { %>
+                  <option value="<%= b.id %>"><%= b.code %> - <%= b.name %></option>
+                <% }) %>
+              </select>
+              <small class="form-hint">Sebagai akun Pusat, tentukan cabang pemilik laporan ini.</small>
+            </div>
+          <% } else { %>
+            <div class="form-group mb-4">
+              <label class="form-label font-semibold">Cabang Pengunggah</label>
+              <input type="text" class="form-input bg-disabled" value="<%= currentUser.branch_code %> - <%= currentUser.branch_name %>" disabled>
+              <input type="hidden" name="branchId" value="<%= currentUser.branch_id %>">
+            </div>
+          <% } %>
+
+          <div class="dropzone-area" id="dropzone">
+            <div class="dropzone-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <p class="dropzone-title">Seret file template Excel ke sini atau klik untuk memilih</p>
+            <p class="dropzone-sub">Format yang didukung: <strong>.xlsx</strong> (Maksimal 10 MB)</p>
+            <input type="file" name="lppFile" id="lppFile" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="file-input-hidden" required>
+            <div class="file-selected-name" id="file-name-display" style="display: none;"></div>
+          </div>
+
+          <div class="form-actions mt-4">
+            <button type="submit" class="btn btn-primary btn-lg" id="btn-submit-upload">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+              Lanjutkan ke Pratinjau & Validasi
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card info-card">
+      <div class="card-header">
+        <h2 class="card-title">Petunjuk & Validasi Template</h2>
+      </div>
+      <div class="card-body">
+        <ul class="guideline-list">
+          <li>
+            <div class="guide-icon success">✓</div>
+            <div>
+              <strong>Format Template: LPP FP REV 2</strong>
+              <p>File wajib memiliki sheet <code>DEPAN</code> dan <code>BELAKANG</code>.</p>
+            </div>
+          </li>
+          <li>
+            <div class="guide-icon success">✓</div>
+            <div>
+              <strong>Kolom Identitas Wajib</strong>
+              <p>Nama Produk, Kode Produk, Tanggal Produksi, Line, dan No. Batch harus terisi lengkap.</p>
+            </div>
+          </li>
+          <li>
+            <div class="guide-icon warning">!</div>
+            <div>
+              <strong>Pencegahan Duplikasi</strong>
+              <p>Sistem akan menolak jika nomor batch pada tanggal dan line yang sama sudah pernah tersimpan.</p>
+            </div>
+          </li>
+          <li>
+            <div class="guide-icon info">ℹ</div>
+            <div>
+              <strong>Pratinjau Data (Preview)</strong>
+              <p>Anda dapat memeriksa angka hasil ekstraksi sebelum menyetujui penyimpanan permanen.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('lppFile');
+  const nameDisplay = document.getElementById('file-name-display');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      nameDisplay.textContent = '📄 ' + fileInput.files[0].name;
+      nameDisplay.style.display = 'block';
+    }
+  });
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;
+      nameDisplay.textContent = '📄 ' + fileInput.files[0].name;
+      nameDisplay.style.display = 'block';
+    }
+  });
+</script>
+
+<%- include('../layouts/footer') %>

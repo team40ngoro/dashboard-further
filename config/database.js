@@ -62,11 +62,10 @@ async function query(sql, params = []) {
 
   const p = getDbPool();
   try {
-    const [rows, fields] = await p.execute(sql, params);
+    const [rows] = await p.execute(sql, params);
     return rows;
   } catch (err) {
     if (err.code === 'ECONNREFUSED' || err.code === 'ER_BAD_DB_ERROR' || process.env.NODE_ENV === 'test') {
-      console.warn(`[DB Fallback] MySQL unavailable (${err.code}). Using mock driver for query.`);
       isMock = true;
       return runMockQuery(sql, params);
     }
@@ -93,7 +92,6 @@ async function rawQuery(sql) {
 
 async function transaction(callback) {
   if (isMock || process.env.DB_DRIVER === 'mock') {
-    // Mock transaction context
     const mockConn = {
       execute: async (sql, params) => {
         const res = runMockQuery(sql, params);
@@ -144,7 +142,7 @@ async function runMigrations() {
   return { success: true };
 }
 
-// Simple Mock SQL Evaluator for robust zero-dependency test environment
+// Simple Mock SQL Evaluator for test and development fallback
 function runMockQuery(sql, params = []) {
   const cleanSql = sql.trim().replace(/\s+/g, ' ');
   const upper = cleanSql.toUpperCase();
@@ -191,7 +189,6 @@ function runMockQuery(sql, params = []) {
   // INSERT INTO users
   if (upper.startsWith('INSERT INTO USERS')) {
     const newId = mockStorage.users.length > 0 ? Math.max(...mockStorage.users.map(u => u.id)) + 1 : 1;
-    // (branch_id, username, password_hash, full_name, role, is_active)
     const [branch_id, username, password_hash, full_name, role, is_active] = params;
     const newUser = { id: newId, branch_id: branch_id ? Number(branch_id) : null, username, password_hash, full_name, role, is_active: is_active ?? 1 };
     mockStorage.users.push(newUser);
@@ -207,20 +204,80 @@ function runMockQuery(sql, params = []) {
     return { insertId: newId, affectedRows: 1 };
   }
 
-  // Check duplicate batch
-  if (upper.startsWith('SELECT') && upper.includes('FROM PRODUCTION_BATCHES') && upper.includes('FILE_HASH =')) {
-    const [branchId, hash] = params;
-    return mockStorage.production_batches.filter(b => b.branch_id === Number(branchId) && b.file_hash === hash);
+  // SELECT from production_batches
+  if (upper.startsWith('SELECT') && upper.includes('FROM PRODUCTION_BATCHES')) {
+    if (upper.includes('FILE_HASH =')) {
+      const [branchId, hash] = params;
+      return mockStorage.production_batches.filter(b => b.branch_id === Number(branchId) && b.file_hash === hash);
+    }
+    if (upper.includes('BATCH_NUMBER =') && upper.includes('LINE =')) {
+      const [branchId, prodDate, batchNo, line] = params;
+      return mockStorage.production_batches.filter(b => 
+        b.branch_id === Number(branchId) && 
+        b.production_date === prodDate && 
+        b.batch_number === batchNo && 
+        b.line === line
+      );
+    }
+    if (upper.includes('WHERE ID =') || upper.includes('WHERE B.ID =')) {
+      const id = params[0];
+      const batch = mockStorage.production_batches.find(b => b.id === Number(id));
+      if (!batch) return [];
+      const branch = mockStorage.branches.find(br => br.id === batch.branch_id);
+      const user = mockStorage.users.find(u => u.id === batch.created_by);
+      return [{
+        ...batch,
+        branch_name: branch ? branch.name : null,
+        branch_code: branch ? branch.code : null,
+        creator_name: user ? user.full_name : null
+      }];
+    }
+    // List batches with optional branch filter
+    let results = [...mockStorage.production_batches];
+    if (upper.includes('WHERE B.BRANCH_ID =') || upper.includes('WHERE BRANCH_ID =')) {
+      const branchId = params[0];
+      results = results.filter(b => b.branch_id === Number(branchId));
+    }
+    return results.map(batch => {
+      const branch = mockStorage.branches.find(br => br.id === batch.branch_id);
+      const user = mockStorage.users.find(u => u.id === batch.created_by);
+      return {
+        ...batch,
+        branch_name: branch ? branch.name : null,
+        branch_code: branch ? branch.code : null,
+        creator_name: user ? user.full_name : null
+      };
+    });
   }
 
-  if (upper.startsWith('SELECT') && upper.includes('FROM PRODUCTION_BATCHES') && upper.includes('BATCH_NUMBER =')) {
-    const [branchId, prodDate, batchNo, line] = params;
-    return mockStorage.production_batches.filter(b => 
-      b.branch_id === Number(branchId) && 
-      b.production_date === prodDate && 
-      b.batch_number === batchNo && 
-      b.line === line
-    );
+  // SELECT from batch_materials
+  if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_MATERIALS')) {
+    const batchId = params[0];
+    return mockStorage.batch_materials.filter(m => m.batch_id === Number(batchId));
+  }
+
+  // SELECT from batch_machine_metrics
+  if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_MACHINE_METRICS')) {
+    const batchId = params[0];
+    return mockStorage.batch_machine_metrics.filter(m => m.batch_id === Number(batchId));
+  }
+
+  // SELECT from batch_rejects
+  if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_REJECTS')) {
+    const batchId = params[0];
+    return mockStorage.batch_rejects.filter(r => r.batch_id === Number(batchId));
+  }
+
+  // SELECT from batch_outputs
+  if (upper.startsWith('SELECT') && upper.includes('FROM BATCH_OUTPUTS')) {
+    const batchId = params[0];
+    return mockStorage.batch_outputs.filter(o => o.batch_id === Number(batchId));
+  }
+
+  // SELECT from audit_logs
+  if (upper.startsWith('SELECT') && upper.includes('FROM AUDIT_LOGS')) {
+    const batchId = params[0];
+    return mockStorage.audit_logs.filter(a => a.batch_id === Number(batchId));
   }
 
   // INSERT INTO production_batches
@@ -244,10 +301,27 @@ function runMockQuery(sql, params = []) {
       total_reject_kg: Number(total_reject_kg) || 0,
       calculated_reject_pct: Number(calculated_reject_pct) || 0,
       created_by: Number(created_by),
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     mockStorage.production_batches.push(newBatch);
     return { insertId: newId, affectedRows: 1 };
+  }
+
+  // UPDATE production_batches
+  if (upper.startsWith('UPDATE PRODUCTION_BATCHES')) {
+    // UPDATE production_batches SET product_name = ?, line = ?, work_hours = ?, meat_percentage = ? WHERE id = ?
+    const id = params[params.length - 1];
+    const batch = mockStorage.production_batches.find(b => b.id === Number(id));
+    if (batch) {
+      batch.product_name = params[0] || batch.product_name;
+      batch.line = params[1] || batch.line;
+      batch.work_hours = Number(params[2]) || batch.work_hours;
+      batch.meat_percentage = Number(params[3]) || batch.meat_percentage;
+      batch.updated_at = new Date().toISOString();
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
   }
 
   // INSERT INTO batch_materials
@@ -262,7 +336,7 @@ function runMockQuery(sql, params = []) {
   if (upper.startsWith('INSERT INTO BATCH_MACHINE_METRICS')) {
     const newId = mockStorage.batch_machine_metrics.length + 1;
     const [batch_id, machine_name, parameter_name, unit, metric_type, value_numeric, value_text] = params;
-    mockStorage.batch_machine_metrics.push({ id: newId, batch_id: Number(batch_id), machine_name, parameter_name, unit, metric_type, value_numeric: value_numeric !== null ? Number(value_numeric) : null, value_text });
+    mockStorage.batch_machine_metrics.push({ id: newId, batch_id: Number(batch_id), machine_name, parameter_name, unit, metric_type, value_numeric: value_numeric !== null && value_numeric !== undefined ? Number(value_numeric) : null, value_text });
     return { insertId: newId, affectedRows: 1 };
   }
 
@@ -290,7 +364,6 @@ function runMockQuery(sql, params = []) {
     return { insertId: newId, affectedRows: 1 };
   }
 
-  // Generic fallback query response
   return [];
 }
 
