@@ -7,10 +7,11 @@
   
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #64748b;
-  
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
+  /* CP Food Division Corporate Red Brand Theme */
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --primary-light: #fef2f2;
+  --primary-subtle: #fee2e2;
   
   --success: #059669;
   --success-hover: #047857;
@@ -129,8 +130,8 @@ body {
 
 .nav-link.active {
   color: var(--primary);
-  background: #eff6ff;
-  font-weight: 600;
+  background: var(--primary-light);
+  font-weight: 700;
 }
 
 .navbar-right {
@@ -473,7 +474,7 @@ body {
   color: var(--primary);
 }
 .btn-outline-primary:hover {
-  background: #eff6ff;
+  background: var(--primary-light);
 }
 
 .btn-disabled {
@@ -558,8 +559,8 @@ body {
 }
 
 .badge-branch {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--primary-light);
+  color: var(--primary-hover);
 }
 
 .badge-actual {
@@ -631,7 +632,7 @@ body {
 }
 
 .dropzone-area:hover, .dropzone-area.dragover {
-  background: #eff6ff;
+  background: var(--primary-light);
 }
 
 .dropzone-icon {
@@ -791,8 +792,8 @@ body {
 }
 
 .demo-btn:hover {
-  background: #eff6ff;
-  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2);
+  background: var(--primary-light);
+  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.2);
 }
 
 .demo-role {

@@ -91,8 +91,8 @@ function initAllCharts(metrics) {
             type: 'line',
             label: 'Bahan Baku (Kg)',
             data: c.outputTrend?.materialData || [],
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            borderColor: '#dc2626',
+            backgroundColor: 'rgba(220, 38, 38, 0.08)',
             borderWidth: 2,
             tension: 0.2,
             pointRadius: 2.5
@@ -107,7 +107,7 @@ function initAllCharts(metrics) {
   const ctxMat = document.getElementById('chartMaterialsComposition')?.getContext('2d');
   if (ctxMat) {
     safeDestroyChart('materials');
-    const matColors = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#475569'];
+    const matColors = ['#dc2626', '#059669', '#d97706', '#7c3aed', '#0891b2', '#475569', '#334155'];
     chartInstances['materials'] = new Chart(ctxMat, {
       type: 'doughnut',
       data: {
@@ -142,8 +142,8 @@ function initAllCharts(metrics) {
           {
             label: 'Rendemen (%)',
             data: c.productionYield?.yieldData || [],
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37, 99, 235, 0.05)',
+            borderColor: '#dc2626',
+            backgroundColor: 'rgba(220, 38, 38, 0.06)',
             borderWidth: 2,
             tension: 0.2,
             pointRadius: 3
@@ -151,7 +151,7 @@ function initAllCharts(metrics) {
           {
             label: 'Rasio Rijek (%)',
             data: c.productionYield?.rejectData || [],
-            borderColor: '#e11d48',
+            borderColor: '#64748b',
             borderWidth: 1.5,
             borderDash: [4, 4],
             tension: 0.2,
