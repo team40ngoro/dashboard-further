@@ -1,0 +1,139 @@
+<%- include('../layouts/header', { title: title }) %>
+<%- include('../layouts/navbar', { activePage: 'batches' }) %>
+
+<main class="main-content">
+  <div class="content-header flex-between">
+    <div>
+      <h1 class="page-title">Daftar Batch Produksi</h1>
+      <p class="page-subtitle">Riwayat seluruh laporan LPP yang telah diimpor dan terintegrasi.</p>
+    </div>
+    <% if (currentUser.role === 'admin_pusat' || currentUser.role === 'pengunggah_cabang') { %>
+      <div>
+        <a href="/upload" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Unggah LPP Baru
+        </a>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (successMessage) { %>
+    <div class="alert alert-success mb-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span><%= successMessage %></span>
+    </div>
+  <% } %>
+
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger mb-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span><%= errorMessage %></span>
+    </div>
+  <% } %>
+
+  <!-- Filters Toolbar -->
+  <div class="card filter-card mb-4">
+    <form action="/batches" method="GET" class="filter-form">
+      <% if (isCentralUser) { %>
+        <div class="filter-col">
+          <label for="branchId" class="filter-label">Cabang</label>
+          <select name="branchId" id="branchId" class="form-select">
+            <option value="">Semua Cabang</option>
+            <% branches.forEach(b => { %>
+              <option value="<%= b.id %>" <%= (filters.branchId == b.id) ? 'selected' : '' %>><%= b.code %> - <%= b.name %></option>
+            <% }) %>
+          </select>
+        </div>
+      <% } %>
+
+      <div class="filter-col">
+        <label for="startDate" class="filter-label">Dari Tanggal</label>
+        <input type="date" name="startDate" id="startDate" class="form-input" value="<%= filters.startDate %>">
+      </div>
+
+      <div class="filter-col">
+        <label for="endDate" class="filter-label">Sampai Tanggal</label>
+        <input type="date" name="endDate" id="endDate" class="form-input" value="<%= filters.endDate %>">
+      </div>
+
+      <div class="filter-col">
+        <label for="productCode" class="filter-label">Produk</label>
+        <input type="text" name="productCode" id="productCode" class="form-input" placeholder="Cari kode/nama..." value="<%= filters.productCode %>">
+      </div>
+
+      <div class="filter-col">
+        <label for="line" class="filter-label">Line</label>
+        <select name="line" id="line" class="form-select">
+          <option value="">Semua Line</option>
+          <option value="Line 1" <%= filters.line === 'Line 1' ? 'selected' : '' %>>Line 1</option>
+          <option value="Line 2" <%= filters.line === 'Line 2' ? 'selected' : '' %>>Line 2</option>
+          <option value="Line 3" <%= filters.line === 'Line 3' ? 'selected' : '' %>>Line 3</option>
+        </select>
+      </div>
+
+      <div class="filter-col filter-actions">
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        <a href="/batches" class="btn btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Batches Table Card -->
+  <div class="card">
+    <div class="card-header flex-between">
+      <h3 class="card-title">Data Batch Terdaftar (<%= batches.length %> batch)</h3>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>No. Batch</th>
+              <th>Tanggal</th>
+              <th>Cabang</th>
+              <th>Produk</th>
+              <th>Line</th>
+              <th class="text-right">Bahan (Kg)</th>
+              <th class="text-right">Output (Kg)</th>
+              <th class="text-right">% Rijek</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (batches.length === 0) { %>
+              <tr>
+                <td colspan="9" class="text-center py-6 text-muted">
+                  Belum ada data batch yang sesuai dengan filter pencarian.
+                </td>
+              </tr>
+            <% } %>
+            <% batches.forEach(b => { %>
+              <tr>
+                <td class="font-bold text-primary">
+                  <a href="/batches/<%= b.id %>" class="table-link"><%= b.batch_number %></a>
+                </td>
+                <td><%= typeof b.production_date === 'string' ? b.production_date.split('T')[0] : (b.production_date ? b.production_date.toISOString().split('T')[0] : '-') %></td>
+                <td><span class="badge badge-branch"><%= b.branch_code || b.branch_name %></span></td>
+                <td>
+                  <strong><%= b.product_name %></strong>
+                  <div class="text-xs text-muted"><%= b.product_code %></div>
+                </td>
+                <td><%= b.line %></td>
+                <td class="text-right"><%= Number(b.total_material_kg).toLocaleString('id-ID') %></td>
+                <td class="text-right font-semibold text-success"><%= Number(b.output_good_kg).toLocaleString('id-ID') %></td>
+                <td class="text-right <%= Number(b.calculated_reject_pct) > 3 ? 'text-danger font-bold' : '' %>">
+                  <%= b.calculated_reject_pct %>%
+                </td>
+                <td>
+                  <a href="/batches/<%= b.id %>" class="btn btn-sm btn-outline-primary">Lihat Detail</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../layouts/footer') %>

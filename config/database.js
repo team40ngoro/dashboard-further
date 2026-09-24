@@ -65,7 +65,7 @@ async function query(sql, params = []) {
     const [rows] = await p.execute(sql, params);
     return rows;
   } catch (err) {
-    if (err.code === 'ECONNREFUSED' || err.code === 'ER_BAD_DB_ERROR' || process.env.NODE_ENV === 'test') {
+    if (err.code === 'ECONNREFUSED' || err.code === 'ER_BAD_DB_ERROR' || err.code === 'ER_ACCESS_DENIED_ERROR' || process.env.NODE_ENV === 'test') {
       isMock = true;
       return runMockQuery(sql, params);
     }
@@ -82,7 +82,7 @@ async function rawQuery(sql) {
     const [result] = await p.query(sql);
     return result;
   } catch (err) {
-    if (err.code === 'ECONNREFUSED' || err.code === 'ER_BAD_DB_ERROR' || process.env.NODE_ENV === 'test') {
+    if (err.code === 'ECONNREFUSED' || err.code === 'ER_BAD_DB_ERROR' || err.code === 'ER_ACCESS_DENIED_ERROR' || process.env.NODE_ENV === 'test') {
       isMock = true;
       return [];
     }
@@ -117,7 +117,7 @@ async function transaction(callback) {
     if (conn) {
       try { await conn.rollback(); } catch (_) {}
     }
-    if (err.code === 'ECONNREFUSED' || process.env.NODE_ENV === 'test') {
+    if (err.code === 'ECONNREFUSED' || err.code === 'ER_BAD_DB_ERROR' || err.code === 'ER_ACCESS_DENIED_ERROR' || process.env.NODE_ENV === 'test') {
       isMock = true;
       return await transaction(callback);
     }
@@ -219,10 +219,14 @@ function runMockQuery(sql, params = []) {
         b.line === line
       );
     }
-    if (upper.includes('WHERE ID =') || upper.includes('WHERE B.ID =')) {
+    if (upper.includes('WHERE B.ID =') || upper.includes('WHERE ID =')) {
       const id = params[0];
       const batch = mockStorage.production_batches.find(b => b.id === Number(id));
       if (!batch) return [];
+      if (params.length > 1 && upper.includes('AND B.BRANCH_ID =')) {
+        const branchId = params[1];
+        if (batch.branch_id !== Number(branchId)) return [];
+      }
       const branch = mockStorage.branches.find(br => br.id === batch.branch_id);
       const user = mockStorage.users.find(u => u.id === batch.created_by);
       return [{
@@ -310,7 +314,6 @@ function runMockQuery(sql, params = []) {
 
   // UPDATE production_batches
   if (upper.startsWith('UPDATE PRODUCTION_BATCHES')) {
-    // UPDATE production_batches SET product_name = ?, line = ?, work_hours = ?, meat_percentage = ? WHERE id = ?
     const id = params[params.length - 1];
     const batch = mockStorage.production_batches.find(b => b.id === Number(id));
     if (batch) {
