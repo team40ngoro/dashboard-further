@@ -6,7 +6,7 @@
   <div class="content-header flex-between">
     <div>
       <h1 class="page-title">Dashboard Pengendalian Produk</h1>
-      <p class="page-subtitle">Monitoring parameter proses aktual, berat bahan baku, dan rasio rijek lintas cabang Food Division.</p>
+      <p class="page-subtitle">Pemantauan parameter proses aktual, penggunaan bahan baku, dan rasio rijek lintas cabang Food Division.</p>
     </div>
     <div class="header-actions">
       <% if (currentUser.role === 'admin_pusat' || currentUser.role === 'pengunggah_cabang') { %>
@@ -34,24 +34,24 @@
       <% } %>
 
       <div class="filter-col">
-        <label for="startDate" class="filter-label">Dari Tanggal</label>
+        <label for="startDate" class="filter-label">Tanggal Awal</label>
         <input type="date" name="startDate" id="startDate" class="form-input" value="<%= filters.startDate %>">
       </div>
 
       <div class="filter-col">
-        <label for="endDate" class="filter-label">Sampai Tanggal</label>
+        <label for="endDate" class="filter-label">Tanggal Akhir</label>
         <input type="date" name="endDate" id="endDate" class="form-input" value="<%= filters.endDate %>">
       </div>
 
       <div class="filter-col">
         <label for="productCode" class="filter-label">Produk</label>
-        <input type="text" name="productCode" id="productCode" class="form-input" placeholder="Kode atau nama produk..." value="<%= filters.productCode %>">
+        <input type="text" name="productCode" id="productCode" class="form-input" placeholder="Kode atau nama produk" value="<%= filters.productCode %>">
       </div>
 
       <div class="filter-col">
-        <label for="line" class="filter-label">Line Produksi</label>
+        <label for="line" class="filter-label">Lini Produksi</label>
         <select name="line" id="line" class="form-select">
-          <option value="">Semua Line</option>
+          <option value="">Semua Lini</option>
           <option value="Line 1" <%= filters.line === 'Line 1' ? 'selected' : '' %>>Line 1</option>
           <option value="Line 2" <%= filters.line === 'Line 2' ? 'selected' : '' %>>Line 2</option>
           <option value="Line 3" <%= filters.line === 'Line 3' ? 'selected' : '' %>>Line 3</option>
@@ -61,7 +61,7 @@
       <div class="filter-col">
         <label for="machineParam" class="filter-label">Parameter Mesin</label>
         <select name="machineParam" id="machineParam" class="form-select">
-          <option value="">-- Pilih Parameter Mesin --</option>
+          <option value="">Pilih Parameter Mesin</option>
           <% metrics.availableMachineParams.forEach(p => { %>
             <option value="<%= p.key %>" <%= (filters.machineParam === p.key || (!filters.machineParam && p.key === metrics.charts.machineMetricsTrend?.paramName)) ? 'selected' : '' %>>
               <%= p.key %> (<%= p.unit %>)
@@ -86,7 +86,7 @@
     <div class="kpi-card">
       <div class="kpi-label">TOTAL BAHAN BAKU</div>
       <div class="kpi-value" id="kpi-total-material"><%= metrics.kpis.totalMaterialKg.toLocaleString('id-ID') %> kg</div>
-      <div class="kpi-sub">Input bahan baku & adonan</div>
+      <div class="kpi-sub">Input bahan baku dan adonan</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">TOTAL OUTPUT BAIK</div>
@@ -142,8 +142,8 @@
   <!-- Recent Batches Summary Table -->
   <div class="card mb-4">
     <div class="card-header flex-between">
-      <h3 class="card-title">Tabel Angka Ringkas Batch (Sinkron dengan Filter)</h3>
-      <a href="/batches" class="btn btn-sm btn-outline-secondary">Lihat Seluruh Batch →</a>
+      <h3 class="card-title">Tabel Ringkasan Batch (Sinkron dengan Filter)</h3>
+      <a href="/batches" class="btn btn-sm btn-outline-secondary">Lihat Seluruh Batch</a>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -154,7 +154,7 @@
               <th>Tanggal</th>
               <th>Cabang</th>
               <th>Produk</th>
-              <th>Line</th>
+              <th>Lini</th>
               <th class="text-right">Bahan (Kg)</th>
               <th class="text-right">Output (Kg)</th>
               <th class="text-right">% Rijek</th>
@@ -165,7 +165,7 @@
             <% if (metrics.batchesSummaryTable.length === 0) { %>
               <tr>
                 <td colspan="9" class="text-center py-6 text-muted">
-                  Tidak ada batch yang ditemukan untuk rentang filter saat ini.
+                  Tidak ada batch yang ditemukan untuk kriteria filter saat ini.
                 </td>
               </tr>
             <% } %>

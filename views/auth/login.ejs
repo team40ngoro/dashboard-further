@@ -15,7 +15,7 @@
       <div class="brand-header">
         <div class="brand-logo-badge">CPI</div>
         <h1 class="brand-title">Food Division</h1>
-        <p class="brand-subtitle">Dashboard Laporan Pengendalian Produk (LPP)</p>
+        <p class="brand-subtitle">Sistem Laporan Pengendalian Produk (LPP)</p>
       </div>
 
       <% if (error) { %>
@@ -27,30 +27,30 @@
 
       <form action="/login" method="POST" class="auth-form" id="login-form">
         <div class="form-group">
-          <label for="username">Username</label>
+          <label for="username">Nama Pengguna (Username)</label>
           <div class="input-wrapper">
-            <input type="text" id="username" name="username" value="<%= username %>" placeholder="admin.pusat / uploader.cikande" required autofocus>
+            <input type="text" id="username" name="username" value="<%= username %>" placeholder="Contoh: admin.pusat atau uploader.cikande" required autofocus>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Kata Sandi (Password)</label>
           <div class="input-wrapper">
-            <input type="password" id="password" name="password" placeholder="••••••••" required>
+            <input type="password" id="password" name="password" placeholder="Masukkan kata sandi" required>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">
-          Masuk ke Dashboard
+          Masuk ke Sistem
         </button>
       </form>
 
       <div class="login-footer">
         <p class="demo-hints">
-          <strong>Demo Akun Tersedia:</strong><br>
-          • Pusat: <code>admin.pusat</code> / <code>password123</code><br>
-          • Analis: <code>analis.pusat</code> / <code>password123</code><br>
-          • Cabang: <code>uploader.cikande</code> / <code>password123</code>
+          <strong>Akun Demo:</strong><br>
+          • Admin Pusat: <code>admin.pusat</code> / <code>password123</code><br>
+          • Analis Pusat: <code>analis.pusat</code> / <code>password123</code><br>
+          • Operator Cabang: <code>uploader.cikande</code> / <code>password123</code>
         </p>
       </div>
     </div>

@@ -4,7 +4,7 @@
 <main class="main-content">
   <div class="content-header flex-between">
     <div>
-      <h1 class="page-title">Pratinjau Ekstraksi & Validasi LPP</h1>
+      <h1 class="page-title">Pratinjau Ekstraksi dan Validasi LPP</h1>
       <p class="page-subtitle">Periksa ringkasan data sebelum melakukan konfirmasi penyimpanan permanen ke basis data.</p>
     </div>
     <div class="header-actions">
@@ -15,12 +15,12 @@
         <form action="/upload/commit" method="POST" style="display:inline;">
           <button type="submit" class="btn btn-success" id="btn-confirm-commit">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"></path></svg>
-            Konfirmasi & Simpan ke Database
+            Konfirmasi dan Simpan ke Basis Data
           </button>
         </form>
       <% } else { %>
         <button class="btn btn-disabled" disabled title="Perbaiki kesalahan validasi sebelum menyimpan">
-          Simpan Dinonaktifkan (Ada Kesalahan)
+          Simpan Dinonaktifkan (Terdapat Kesalahan)
         </button>
       <% } %>
     </div>
@@ -48,7 +48,7 @@
       </div>
       <div>
         <h4 class="font-bold">Validasi Berhasil</h4>
-        <p>File Excel sesuai template LPP FP REV 2 dan siap disimpan untuk cabang: <strong><%= branchName %></strong>.</p>
+        <p>Format berkas Excel sesuai dengan template LPP FP REV 2 dan siap disimpan untuk cabang: <strong><%= branchName %></strong>.</p>
       </div>
     </div>
   <% } %>
@@ -72,26 +72,26 @@
   <!-- Summary KPI Cards -->
   <div class="kpi-grid mb-4">
     <div class="kpi-card">
-      <div class="kpi-label">Nomor Batch / Line</div>
+      <div class="kpi-label">Nomor Batch / Lini</div>
       <div class="kpi-value text-primary"><%= batch.identity.batchNumber || '-' %></div>
       <div class="kpi-sub"><%= batch.identity.line %> | <%= branchName %></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Total Bahan Baku (Kg)</div>
       <div class="kpi-value"><%= batch.totalMaterialKg.toLocaleString('id-ID') %> kg</div>
-      <div class="kpi-sub"><%= batch.materials.length %> item bahan</div>
+      <div class="kpi-sub"><%= batch.materials.length %> item bahan baku</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Total Output Produk (Kg)</div>
       <div class="kpi-value text-success"><%= batch.outputGoodKg.toLocaleString('id-ID') %> kg</div>
-      <div class="kpi-sub"><%= batch.outputs.length %> palet / entri packing</div>
+      <div class="kpi-sub"><%= batch.outputs.length %> palet kemasan</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Rasio Rijek Global</div>
       <div class="kpi-value <%= batch.calculatedRejectPct > 3 ? 'text-danger' : 'text-warning' %>">
         <%= batch.calculatedRejectPct %> %
       </div>
-      <div class="kpi-sub">Total: <%= batch.totalRejectKg.toLocaleString('id-ID') %> kg</div>
+      <div class="kpi-sub">Total rijek: <%= batch.totalRejectKg.toLocaleString('id-ID') %> kg</div>
     </div>
   </div>
 
@@ -100,7 +100,7 @@
     <!-- Identitas Detail -->
     <div class="card mb-4">
       <div class="card-header">
-        <h3 class="card-title">1. Identitas Produksi (Sheet DEPAN)</h3>
+        <h3 class="card-title">1. Identitas Produksi (Lembar Kerja DEPAN)</h3>
       </div>
       <div class="card-body">
         <div class="info-grid">
@@ -117,7 +117,7 @@
     <!-- Bahan Baku -->
     <div class="card mb-4">
       <div class="card-header">
-        <h3 class="card-title">2. Bahan Baku & Adonan (<%= batch.materials.length %> entri)</h3>
+        <h3 class="card-title">2. Bahan Baku dan Adonan (<%= batch.materials.length %> entri)</h3>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -156,7 +156,7 @@
     <!-- Parameter Mesin (EAV) -->
     <div class="card mb-4">
       <div class="card-header">
-        <h3 class="card-title">3. Parameter Aktual Mesin & Kualitas (<%= batch.machineMetrics.length %> parameter)</h3>
+        <h3 class="card-title">3. Parameter Aktual Mesin dan Kualitas (<%= batch.machineMetrics.length %> parameter)</h3>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -190,7 +190,7 @@
     <div class="grid-2-cols mb-4">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">4. Rincian Rijek (Cooking & Packing)</h3>
+          <h3 class="card-title">4. Rincian Rijek (Cooking dan Packing)</h3>
         </div>
         <div class="card-body p-0">
           <table class="data-table">
@@ -216,7 +216,7 @@
 
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">5. Output Produk Jadi (Sheet BELAKANG)</h3>
+          <h3 class="card-title">5. Output Produk Jadi (Lembar Kerja BELAKANG)</h3>
         </div>
         <div class="card-body p-0">
           <table class="data-table">

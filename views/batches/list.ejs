@@ -5,7 +5,7 @@
   <div class="content-header flex-between">
     <div>
       <h1 class="page-title">Daftar Batch Produksi</h1>
-      <p class="page-subtitle">Riwayat seluruh laporan LPP yang telah diimpor dan terintegrasi.</p>
+      <p class="page-subtitle">Riwayat seluruh laporan LPP yang telah diimpor dan terverifikasi.</p>
     </div>
     <% if (currentUser.role === 'admin_pusat' || currentUser.role === 'pengunggah_cabang') { %>
       <div>
@@ -47,24 +47,24 @@
       <% } %>
 
       <div class="filter-col">
-        <label for="startDate" class="filter-label">Dari Tanggal</label>
+        <label for="startDate" class="filter-label">Tanggal Awal</label>
         <input type="date" name="startDate" id="startDate" class="form-input" value="<%= filters.startDate %>">
       </div>
 
       <div class="filter-col">
-        <label for="endDate" class="filter-label">Sampai Tanggal</label>
+        <label for="endDate" class="filter-label">Tanggal Akhir</label>
         <input type="date" name="endDate" id="endDate" class="form-input" value="<%= filters.endDate %>">
       </div>
 
       <div class="filter-col">
         <label for="productCode" class="filter-label">Produk</label>
-        <input type="text" name="productCode" id="productCode" class="form-input" placeholder="Cari kode/nama..." value="<%= filters.productCode %>">
+        <input type="text" name="productCode" id="productCode" class="form-input" placeholder="Cari kode atau nama" value="<%= filters.productCode %>">
       </div>
 
       <div class="filter-col">
-        <label for="line" class="filter-label">Line</label>
+        <label for="line" class="filter-label">Lini Produksi</label>
         <select name="line" id="line" class="form-select">
-          <option value="">Semua Line</option>
+          <option value="">Semua Lini</option>
           <option value="Line 1" <%= filters.line === 'Line 1' ? 'selected' : '' %>>Line 1</option>
           <option value="Line 2" <%= filters.line === 'Line 2' ? 'selected' : '' %>>Line 2</option>
           <option value="Line 3" <%= filters.line === 'Line 3' ? 'selected' : '' %>>Line 3</option>
@@ -92,7 +92,7 @@
               <th>Tanggal</th>
               <th>Cabang</th>
               <th>Produk</th>
-              <th>Line</th>
+              <th>Lini</th>
               <th class="text-right">Bahan (Kg)</th>
               <th class="text-right">Output (Kg)</th>
               <th class="text-right">% Rijek</th>
@@ -103,7 +103,7 @@
             <% if (batches.length === 0) { %>
               <tr>
                 <td colspan="9" class="text-center py-6 text-muted">
-                  Belum ada data batch yang sesuai dengan filter pencarian.
+                  Belum ada data batch yang sesuai dengan kriteria pencarian.
                 </td>
               </tr>
             <% } %>
@@ -125,7 +125,7 @@
                   <%= b.calculated_reject_pct %>%
                 </td>
                 <td>
-                  <a href="/batches/<%= b.id %>" class="btn btn-sm btn-outline-primary">Lihat Detail</a>
+                  <a href="/batches/<%= b.id %>" class="btn btn-sm btn-outline-primary">Lihat Rincian</a>
                 </td>
               </tr>
             <% }) %>

@@ -7,7 +7,7 @@
       <div class="breadcrumb mb-2">
         <a href="/batches" class="text-muted">← Kembali ke Daftar Batch</a>
       </div>
-      <h1 class="page-title">Detail Batch: <%= batch.batch_number %></h1>
+      <h1 class="page-title">Rincian Batch: <%= batch.batch_number %></h1>
       <p class="page-subtitle">Laporan Pengendalian Produk cabang <strong><%= batch.branch_name %></strong> (<%= batch.branch_code %>)</p>
     </div>
     <div class="header-actions">
@@ -43,7 +43,7 @@
     <div class="kpi-card">
       <div class="kpi-label">Total Output Produk</div>
       <div class="kpi-value text-success font-bold"><%= Number(batch.output_good_kg).toLocaleString('id-ID') %> kg</div>
-      <div class="kpi-sub"><%= batch.outputs.length %> palet pengemasan</div>
+      <div class="kpi-sub"><%= batch.outputs.length %> palet kemasan</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Rasio Rijek</div>
@@ -57,12 +57,12 @@
   <!-- Identitas Batch Card -->
   <div class="card mb-4">
     <div class="card-header">
-      <h3 class="card-title">1. Identitas & Header Produksi (DEPAN)</h3>
+      <h3 class="card-title">1. Identitas Produksi (Lembar Kerja DEPAN)</h3>
     </div>
     <div class="card-body">
       <div class="info-grid">
         <div class="info-item"><span class="info-label">Tanggal Produksi:</span> <span class="info-val font-semibold"><%= typeof batch.production_date === 'string' ? batch.production_date.split('T')[0] : (batch.production_date ? batch.production_date.toISOString().split('T')[0] : '-') %></span></div>
-        <div class="info-item"><span class="info-label">Line Produksi:</span> <span class="info-val font-semibold"><%= batch.line %></span></div>
+        <div class="info-item"><span class="info-label">Lini Produksi:</span> <span class="info-val font-semibold"><%= batch.line %></span></div>
         <div class="info-item"><span class="info-label">Waktu Kerja:</span> <span class="info-val"><%= batch.work_hours %> jam</span></div>
         <div class="info-item"><span class="info-label">% Total Meat:</span> <span class="info-val"><%= batch.meat_percentage %>%</span></div>
         <div class="info-item"><span class="info-label">% Rijek Form:</span> <span class="info-val"><%= batch.form_reject_percentage %>%</span></div>
@@ -111,7 +111,7 @@
   <!-- Parameter Mesin (EAV) -->
   <div class="card mb-4">
     <div class="card-header">
-      <h3 class="card-title">3. Parameter Aktual Mesin & Kualitas</h3>
+      <h3 class="card-title">3. Parameter Aktual Mesin dan Kualitas</h3>
     </div>
     <div class="card-body p-0">
       <table class="data-table">
@@ -143,7 +143,7 @@
   <div class="grid-2-cols mb-4">
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">4. Rincian Rijek (Cooking & Packing)</h3>
+        <h3 class="card-title">4. Rincian Rijek (Cooking dan Packing)</h3>
       </div>
       <div class="card-body p-0">
         <table class="data-table">
@@ -169,7 +169,7 @@
 
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">5. Output Produk Jadi (Sheet BELAKANG)</h3>
+        <h3 class="card-title">5. Output Produk Jadi (Lembar Kerja BELAKANG)</h3>
       </div>
       <div class="card-body p-0">
         <table class="data-table">
@@ -199,7 +199,7 @@
   <!-- Audit Trail -->
   <div class="card mb-4">
     <div class="card-header">
-      <h3 class="card-title">6. Jejak Audit & Koreksi (Audit Trail)</h3>
+      <h3 class="card-title">6. Catatan Riwayat dan Audit (Audit Trail)</h3>
     </div>
     <div class="card-body p-0">
       <table class="data-table">
@@ -209,7 +209,7 @@
             <th>Pengguna</th>
             <th>Aksi</th>
             <th>Keterangan / Perubahan</th>
-            <th>IP Address</th>
+            <th>Alamat IP</th>
           </tr>
         </thead>
         <tbody>

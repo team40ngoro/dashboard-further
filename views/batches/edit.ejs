@@ -4,10 +4,10 @@
 <main class="main-content">
   <div class="content-header">
     <div class="breadcrumb mb-2">
-      <a href="/batches/<%= batch.id %>" class="text-muted">← Kembali ke Detail Batch</a>
+      <a href="/batches/<%= batch.id %>" class="text-muted">← Kembali ke Rincian Batch</a>
     </div>
     <h1 class="page-title">Koreksi Data Batch: <%= batch.batch_number %></h1>
-    <p class="page-subtitle">Setiap perubahan akan dicatat secara permanen di riwayat audit untuk kepatuhan Quality Assurance.</p>
+    <p class="page-subtitle">Setiap perubahan akan dicatat secara permanen pada riwayat audit untuk kepatuhan Quality Assurance.</p>
   </div>
 
   <% if (errorMessage) { %>
@@ -19,7 +19,7 @@
 
   <div class="card max-w-2xl">
     <div class="card-header">
-      <h3 class="card-title">Form Koreksi Nilai Batch</h3>
+      <h3 class="card-title">Formulir Koreksi Data Batch</h3>
     </div>
     <div class="card-body">
       <form action="/batches/<%= batch.id %>/edit" method="POST">
@@ -30,7 +30,7 @@
 
         <div class="grid-2-cols mb-3">
           <div class="form-group">
-            <label for="line" class="form-label font-semibold">Line Produksi</label>
+            <label for="line" class="form-label font-semibold">Lini Produksi</label>
             <input type="text" name="line" id="line" class="form-input" value="<%= batch.line %>" required>
           </div>
           <div class="form-group">
@@ -45,14 +45,14 @@
         </div>
 
         <div class="form-group mb-4">
-          <label for="reason" class="form-label font-semibold text-danger">Alasan Koreksi (Wajib Diisi untuk Audit)</label>
-          <textarea name="reason" id="reason" class="form-textarea" rows="3" placeholder="Contoh: Koreksi penulisan nama produk sesuai revisi instruksi QC..." required></textarea>
+          <label for="reason" class="form-label font-semibold text-danger">Alasan Koreksi (Wajib diisi untuk catatan audit)</label>
+          <textarea name="reason" id="reason" class="form-textarea" rows="3" placeholder="Contoh: Penyesuaian nama produk berdasarkan instruksi revisi QC..." required></textarea>
         </div>
 
         <div class="form-actions flex-between">
           <a href="/batches/<%= batch.id %>" class="btn btn-outline-secondary">Batal</a>
           <button type="submit" class="btn btn-primary">
-            Simpan Perubahan & Catat Audit
+            Simpan Perubahan dan Catat Audit
           </button>
         </div>
       </form>
