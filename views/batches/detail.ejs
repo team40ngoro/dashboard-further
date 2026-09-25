@@ -11,12 +11,10 @@
       <p class="page-subtitle">Laporan Pengendalian Produk cabang <strong><%= batch.branch_name %></strong> (<%= batch.branch_code %>)</p>
     </div>
     <div class="header-actions">
-      <% if (currentUser.role === 'admin_pusat' || (currentUser.role === 'pengunggah_cabang' && currentUser.branch_id === batch.branch_id)) { %>
-        <a href="/batches/<%= batch.id %>/edit" class="btn btn-secondary">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-          Koreksi Data
-        </a>
-      <% } %>
+      <a href="/batches/<%= batch.id %>/edit" class="btn btn-secondary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        Koreksi Data
+      </a>
       <a href="/dashboard" class="btn btn-outline-primary">Lihat di Dashboard</a>
     </div>
   </div>

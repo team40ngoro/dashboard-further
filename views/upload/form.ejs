@@ -5,12 +5,12 @@
   <div class="content-header">
     <div>
       <h1 class="page-title">Unggah Form LPP Excel</h1>
-      <p class="page-subtitle">Unggah formulir Laporan Pengendalian Produk (.xlsx) untuk diekstraksi dan divalidasi ke dalam sistem.</p>
+      <p class="page-subtitle">Pilih cabang, masukkan PIN kode akses plant, dan pilih/tarik berkas LPP (.xlsx) untuk divalidasi secara otomatis.</p>
     </div>
   </div>
 
   <% if (error) { %>
-    <div class="alert alert-danger">
+    <div class="alert alert-danger mb-4">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
       <span><%= error %></span>
     </div>
@@ -19,46 +19,60 @@
   <div class="upload-grid">
     <div class="card upload-card">
       <div class="card-header">
-        <h2 class="card-title">Pilih Berkas LPP</h2>
+        <h2 class="card-title">Formulir Unggah LPP</h2>
       </div>
       <div class="card-body">
         <form action="/upload/process" method="POST" enctype="multipart/form-data" id="upload-form">
-          <% if (currentUser.role === 'admin_pusat' || currentUser.role === 'analis_pusat') { %>
-            <div class="form-group mb-4">
-              <label for="branchId" class="form-label font-semibold">Target Cabang Produksi</label>
-              <select name="branchId" id="branchId" class="form-select" required>
-                <% branches.forEach(b => { %>
-                  <option value="<%= b.id %>"><%= b.code %> - <%= b.name %></option>
-                <% }) %>
-              </select>
-              <small class="form-hint">Sebagai akun Pusat, pilih cabang pemilik laporan ini.</small>
-            </div>
-          <% } else { %>
-            <div class="form-group mb-4">
-              <label class="form-label font-semibold">Cabang Pengunggah</label>
-              <input type="text" class="form-input bg-disabled" value="<%= currentUser.branch_code %> - <%= currentUser.branch_name %>" disabled>
-              <input type="hidden" name="branchId" value="<%= currentUser.branch_id %>">
-            </div>
-          <% } %>
+          
+          <div class="form-group mb-3">
+            <label for="branchId" class="form-label font-semibold">1. Pilih Cabang / Plant Produksi <span class="text-danger">*</span></label>
+            <select name="branchId" id="branchId" class="form-select" required>
+              <option value="">-- Pilih Cabang --</option>
+              <% branches.forEach(b => { %>
+                <option value="<%= b.id %>"><%= b.code %> - <%= b.name %> (<%= b.city %>)</option>
+              <% }) %>
+            </select>
+          </div>
 
-          <div class="dropzone-area" id="dropzone">
-            <div class="dropzone-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <div class="form-group mb-3">
+            <label for="accessCode" class="form-label font-semibold">2. Kode Akses / PIN Plant <span class="text-danger">*</span></label>
+            <div style="position: relative;">
+              <input type="password" name="accessCode" id="accessCode" class="form-input" placeholder="Masukkan PIN Cabang (Default: 1234)" required autocomplete="current-password">
+              <button type="button" id="toggle-pin-btn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;">
+                Lihat
+              </button>
             </div>
-            <p class="dropzone-title">Tarik berkas template Excel ke area ini atau klik untuk memilih</p>
-            <p class="dropzone-sub">Format yang didukung: <strong>.xlsx</strong> (Maksimal 10 MB)</p>
-            <input type="file" name="lppFile" id="lppFile" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="file-input-hidden" required>
-            <div class="file-selected-name" id="file-name-display" style="display: none;"></div>
+            <small class="form-hint">PIN 4 digit cabang atau Master PIN.</small>
+          </div>
+
+          <div class="form-group mb-4" style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="remember-pin" checked style="cursor: pointer; width: 16px; height: 16px;">
+            <label for="remember-pin" style="font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+              Ingat Cabang & PIN di perangkat ini (tidak perlu ketik ulang berikutnya)
+            </label>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label font-semibold">3. Berkas Excel LPP (.xlsx) <span class="text-danger">*</span></label>
+            <div class="dropzone-area" id="dropzone">
+              <div class="dropzone-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              </div>
+              <p class="dropzone-title">Tarik berkas template Excel ke area ini atau klik untuk memilih</p>
+              <p class="dropzone-sub">Format yang didukung: <strong>.xlsx</strong> (Maksimal 10 MB) — <em>Validasi otomatis berjalan saat berkas dipilih</em></p>
+              <input type="file" name="lppFile" id="lppFile" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="file-input-hidden" required>
+              <div class="file-selected-name" id="file-name-display" style="display: none;"></div>
+            </div>
           </div>
 
           <div class="form-actions mt-4 flex-between">
             <button type="submit" class="btn btn-primary btn-lg" id="btn-submit-upload">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-              Lanjutkan ke Pratinjau dan Validasi
+              Validasi & Pratinjau Berkas
             </button>
             <a href="/upload/sample-template" class="btn btn-outline-secondary btn-sm" id="btn-download-sample" download>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Unduh Contoh LPP Terisi (.xlsx)
+              Unduh Contoh LPP (.xlsx)
             </a>
           </div>
         </form>
@@ -67,22 +81,29 @@
 
     <div class="card info-card">
       <div class="card-header">
-        <h2 class="card-title">Petunjuk dan Ketentuan Template</h2>
+        <h2 class="card-title">Petunjuk Validasi Otomatis</h2>
       </div>
       <div class="card-body">
         <ul class="guideline-list">
           <li>
             <div class="guide-icon success">✓</div>
             <div>
-              <strong>Format Template: LPP FP REV 2</strong>
-              <p>Berkas wajib memiliki lembar kerja <code>DEPAN</code> dan <code>BELAKANG</code>.</p>
+              <strong>Deteksi Instan Saat Upload</strong>
+              <p>Begitu berkas Excel dimasukkan, sistem akan langsung mengekstrak dan memverifikasi sel identitas, berat bahan, dan parameter proses tanpa jeda.</p>
             </div>
           </li>
           <li>
             <div class="guide-icon success">✓</div>
             <div>
-              <strong>Kolom Identitas Wajib</strong>
-              <p>Nama Produk, Kode Produk, Tanggal Produksi, Line, dan No. Batch harus terisi dengan lengkap.</p>
+              <strong>Kode Akses / PIN Plant</strong>
+              <p>Gunakan PIN 4 digit cabang Anda (Default: <code>1234</code>) untuk memverifikasi hak unggah cabang.</p>
+            </div>
+          </li>
+          <li>
+            <div class="guide-icon success">✓</div>
+            <div>
+              <strong>Format Template: LPP FP REV 2</strong>
+              <p>Berkas wajib memiliki lembar kerja <code>DEPAN</code> dan <code>BELAKANG</code>.</p>
             </div>
           </li>
           <li>
@@ -95,8 +116,8 @@
           <li>
             <div class="guide-icon info">i</div>
             <div>
-              <strong>Pratinjau Data (Preview)</strong>
-              <p>Anda dapat memverifikasi nilai angka hasil ekstraksi sebelum melakukan penyimpanan permanen.</p>
+              <strong>Notifikasi SweetAlert Terintegrasi</strong>
+              <p>Seluruh pesan validasi kesalahan maupun status sukses ditampilkan melalui notifikasi pop-up terpusat.</p>
             </div>
           </li>
         </ul>
@@ -109,16 +130,173 @@
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('lppFile');
   const nameDisplay = document.getElementById('file-name-display');
+  const branchSelect = document.getElementById('branchId');
+  const pinInput = document.getElementById('accessCode');
+  const rememberPin = document.getElementById('remember-pin');
+  const uploadForm = document.getElementById('upload-form');
+  const togglePinBtn = document.getElementById('toggle-pin-btn');
 
+  // Auto-fill from localStorage if previously saved
+  try {
+    const savedBranch = localStorage.getItem('cp_lpp_branch_id');
+    const savedPin = localStorage.getItem('cp_lpp_access_pin');
+    if (savedBranch && branchSelect) {
+      branchSelect.value = savedBranch;
+    }
+    if (savedPin && pinInput) {
+      pinInput.value = savedPin;
+    }
+  } catch (e) {
+    console.warn('LocalStorage not accessible', e);
+  }
+
+  // Save PIN preference helper
+  function savePinPreference() {
+    try {
+      if (rememberPin && rememberPin.checked) {
+        localStorage.setItem('cp_lpp_branch_id', branchSelect.value);
+        localStorage.setItem('cp_lpp_access_pin', pinInput.value);
+      } else {
+        localStorage.removeItem('cp_lpp_branch_id');
+        localStorage.removeItem('cp_lpp_access_pin');
+      }
+    } catch (e) {}
+  }
+
+  // Toggle PIN visibility
+  if (togglePinBtn && pinInput) {
+    togglePinBtn.addEventListener('click', () => {
+      if (pinInput.type === 'password') {
+        pinInput.type = 'text';
+        togglePinBtn.textContent = 'Sembunyikan';
+      } else {
+        pinInput.type = 'password';
+        togglePinBtn.textContent = 'Lihat';
+      }
+    });
+  }
+
+  // Core instant validation & upload handler
+  async function performInstantValidation(file) {
+    if (!file) return;
+
+    // 1. Check if Branch is selected
+    if (!branchSelect.value) {
+      fileInput.value = '';
+      nameDisplay.style.display = 'none';
+      if (window.AppAlert) {
+        window.AppAlert.warning(
+          'Pilih Cabang / Plant',
+          'Silakan pilih Cabang / Plant produksi terlebih dahulu sebelum mengunggah berkas Excel.',
+          'branchId'
+        );
+      } else {
+        alert('Pilih Cabang terlebih dahulu.');
+      }
+      return;
+    }
+
+    // 2. Check if PIN is filled
+    if (!pinInput.value || pinInput.value.trim() === '') {
+      fileInput.value = '';
+      nameDisplay.style.display = 'none';
+      if (window.AppAlert) {
+        window.AppAlert.warning(
+          'Kode Akses / PIN Diperlukan',
+          'Silakan masukkan Kode Akses / PIN Plant untuk cabang yang dipilih.',
+          'accessCode'
+        );
+      } else {
+        alert('Masukkan PIN Cabang terlebih dahulu.');
+      }
+      return;
+    }
+
+    // Save preferences
+    savePinPreference();
+
+    // 3. Display name and trigger SweetAlert Loading
+    nameDisplay.textContent = 'Berkas dipilih: ' + file.name;
+    nameDisplay.style.display = 'block';
+
+    if (window.AppAlert) {
+      window.AppAlert.loading(
+        'Mengekstrak Berkas Excel...',
+        'Sedang menganalisis struktur lembar kerja LPP dan memvalidasi kelengkapan data otomatis...'
+      );
+    }
+
+    // 4. Send via AJAX
+    try {
+      const formData = new FormData();
+      formData.append('branchId', branchSelect.value);
+      formData.append('accessCode', pinInput.value);
+      formData.append('lppFile', file);
+
+      const response = await fetch('/upload/process', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        if (window.AppAlert) {
+          window.AppAlert.success(
+            'Validasi Berkas Berhasil!',
+            'Data batch ' + (result.summary ? result.summary.batchNumber : '') + ' valid dan siap dipratinjau.',
+            1500
+          ).then(() => {
+            window.location.href = result.redirectUrl || '/upload/preview';
+          });
+        } else {
+          window.location.href = result.redirectUrl || '/upload/preview';
+        }
+      } else {
+        // Validation / Server Error
+        const errors = result.errors || [result.message || 'Terjadi kesalahan saat memproses berkas Excel.'];
+        const warnings = result.warnings || [];
+
+        if (window.AppAlert) {
+          window.AppAlert.validationErrors('Validasi Berkas Gagal', errors, warnings);
+        } else {
+          alert('Validasi gagal:\n' + errors.join('\n'));
+        }
+
+        // Reset file picker so user can re-upload corrected file
+        fileInput.value = '';
+        nameDisplay.style.display = 'none';
+      }
+    } catch (err) {
+      console.error('AJAX upload error:', err);
+      if (window.AppAlert) {
+        window.AppAlert.error(
+          'Gagal Memproses Berkas',
+          'Terjadi kendala koneksi atau kesalahan server: ' + err.message
+        );
+      } else {
+        alert('Gagal memproses berkas: ' + err.message);
+      }
+      fileInput.value = '';
+      nameDisplay.style.display = 'none';
+    }
+  }
+
+  // Dropzone click trigger
   dropzone.addEventListener('click', () => fileInput.click());
 
+  // Input change trigger (instant validation)
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
-      nameDisplay.textContent = 'Berkas dipilih: ' + fileInput.files[0].name;
-      nameDisplay.style.display = 'block';
+      performInstantValidation(fileInput.files[0]);
     }
   });
 
+  // Drag & drop triggers
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropzone.classList.add('dragover');
@@ -133,8 +311,21 @@
     dropzone.classList.remove('dragover');
     if (e.dataTransfer.files.length > 0) {
       fileInput.files = e.dataTransfer.files;
-      nameDisplay.textContent = 'Berkas dipilih: ' + fileInput.files[0].name;
-      nameDisplay.style.display = 'block';
+      performInstantValidation(e.dataTransfer.files[0]);
+    }
+  });
+
+  // Form submit trigger fallback
+  uploadForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (fileInput.files.length > 0) {
+      performInstantValidation(fileInput.files[0]);
+    } else {
+      if (window.AppAlert) {
+        window.AppAlert.warning('Pilih Berkas Excel', 'Silakan pilih berkas Excel (.xlsx) terlebih dahulu.');
+      } else {
+        alert('Pilih berkas Excel terlebih dahulu.');
+      }
     }
   });
 </script>

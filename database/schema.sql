@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS branches (
   code VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(150) NOT NULL,
   city VARCHAR(100),
+  access_code VARCHAR(50) NOT NULL DEFAULT '1234',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -36,13 +37,13 @@ CREATE TABLE IF NOT EXISTS production_batches (
   output_good_kg DECIMAL(12,2) DEFAULT 0.00,
   total_reject_kg DECIMAL(12,2) DEFAULT 0.00,
   calculated_reject_pct DECIMAL(5,2) DEFAULT 0.00,
-  created_by INT NOT NULL,
+  created_by INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_branch_batch (branch_id, production_date, batch_number, line),
   INDEX idx_filter (branch_id, production_date, product_code, line),
   FOREIGN KEY (branch_id) REFERENCES branches(id),
-  FOREIGN KEY (created_by) REFERENCES users(id)
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS batch_materials (
@@ -93,10 +94,10 @@ CREATE TABLE IF NOT EXISTS batch_outputs (
 CREATE TABLE IF NOT EXISTS audit_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   batch_id INT NULL,
-  user_id INT NOT NULL,
+  user_id INT NULL,
   action VARCHAR(50) NOT NULL,
   details TEXT NOT NULL,
   ip_address VARCHAR(45) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,12 +1,12 @@
 -- Initial Seed Data for LPP Food Division Dashboard
 
--- Branches
-INSERT INTO branches (id, code, name, city) VALUES
-(1, 'CKD-01', 'CPI Food Cikande', 'Serang'),
-(2, 'SMG-01', 'CPI Food Semarang', 'Semarang'),
-(3, 'SBY-01', 'CPI Food Surabaya', 'Surabaya'),
-(4, 'MDN-01', 'CPI Food Medan', 'Medan')
-ON DUPLICATE KEY UPDATE name=VALUES(name), city=VALUES(city);
+-- Branches (Default Access Code PIN: 1234)
+INSERT INTO branches (id, code, name, city, access_code) VALUES
+(1, 'CKD-01', 'CPI Food Cikande', 'Serang', '1234'),
+(2, 'SMG-01', 'CPI Food Semarang', 'Semarang', '1234'),
+(3, 'SBY-01', 'CPI Food Surabaya', 'Surabaya', '1234'),
+(4, 'MDN-01', 'CPI Food Medan', 'Medan', '1234')
+ON DUPLICATE KEY UPDATE name=VALUES(name), city=VALUES(city), access_code=VALUES(access_code);
 
 -- Default Users (Password: password123)
 -- Hash generated with bcryptjs rounds=10: $2a$10$3euP6D5tEaVz1Z1rI7/21e0xXp6b5bKjJ3pU9L1fM6wX4nZ1b6hC6

@@ -47,6 +47,50 @@ test('Upload, Preview & Atomic Batch Commit Test', async (t) => {
     assert.equal(batches[0].batch_number, 'BATCH-20260924-002');
   });
 
+  await t.test('verify plant access code PIN validation and save with null user', async () => {
+    const branches = await query('SELECT * FROM branches WHERE id = ?', [1]);
+    assert.equal(branches.length, 1);
+    assert.equal(branches[0].access_code, '1234');
+
+    const parsed = await parseLppExcel(testFilePath);
+    parsed.identity.batchNumber = 'BATCH-PIN-TEST-003';
+    const result = await saveBatchTransaction({
+      batchData: parsed,
+      branchId: 1,
+      userId: null,
+      ipAddress: '192.168.1.50'
+    });
+
+    assert.ok(result.batchId > 0);
+    const batches = await query('SELECT * FROM production_batches WHERE id = ?', [result.batchId]);
+    assert.equal(batches.length, 1);
+    assert.equal(batches[0].batch_number, 'BATCH-PIN-TEST-003');
+  });
+
+  await t.test('AJAX upload process returns structured JSON response with validation status', async () => {
+    const { handleUploadProcess } = require('../controllers/uploadController');
+    
+    // Test with invalid PIN
+    const mockReqBadPin = {
+      file: { path: testFilePath },
+      body: { branchId: 1, accessCode: '9999' },
+      xhr: true,
+      headers: { accept: 'application/json' },
+      session: {}
+    };
+    let responseStatus = 200;
+    let responseJson = null;
+    const mockRes = {
+      status: (code) => { responseStatus = code; return mockRes; },
+      json: (data) => { responseJson = data; return mockRes; }
+    };
+
+    await handleUploadProcess(mockReqBadPin, mockRes);
+    assert.equal(responseStatus, 403);
+    assert.equal(responseJson.success, false);
+    assert.ok(responseJson.errors.length > 0);
+  });
+
   // Cleanup
   if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
 });

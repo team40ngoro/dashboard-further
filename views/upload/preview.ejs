@@ -245,4 +245,32 @@
   </div>
 </main>
 
+<script>
+  const commitBtn = document.getElementById('btn-confirm-commit');
+  if (commitBtn) {
+    const commitForm = commitBtn.closest('form');
+    if (commitForm) {
+      commitForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (window.AppAlert) {
+          const confirmed = await window.AppAlert.confirm({
+            title: 'Konfirmasi Simpan Batch',
+            message: 'Apakah Anda yakin data batch sudah sesuai dan ingin menyimpannya ke basis data?',
+            icon: 'question',
+            confirmText: 'Ya, Simpan ke Basis Data',
+            cancelText: 'Periksa Lagi',
+            confirmBtnClass: 'btn btn-success'
+          });
+          if (confirmed) {
+            window.AppAlert.loading('Menyimpan Data Batch...', 'Harap tunggu sebentar...');
+            commitForm.submit();
+          }
+        } else {
+          commitForm.submit();
+        }
+      });
+    }
+  }
+</script>
+
 <%- include('../layouts/footer') %>

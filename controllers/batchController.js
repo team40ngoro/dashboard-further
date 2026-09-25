@@ -224,7 +224,7 @@ const batchController = {
         workHours: parseFloat(workHours),
         meatPercentage: parseFloat(meatPercentage),
         reason
-      }, req.session.user.id, req.ip || req.connection.remoteAddress);
+      }, req.session?.user?.id || null, req.ip || req.connection.remoteAddress);
 
       req.session.successMessage = `Batch ${batchId} berhasil diperbarui dan dicatat dalam audit trail.`;
       res.redirect(`/batches/${batchId}`);

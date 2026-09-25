@@ -9,10 +9,10 @@ let isMock = false;
 // In-memory Mock DB Storage for testing / offline fallback
 const mockStorage = {
   branches: [
-    { id: 1, code: 'CKD-01', name: 'CPI Food Cikande', city: 'Serang' },
-    { id: 2, code: 'SMG-01', name: 'CPI Food Semarang', city: 'Semarang' },
-    { id: 3, code: 'SBY-01', name: 'CPI Food Surabaya', city: 'Surabaya' },
-    { id: 4, code: 'MDN-01', name: 'CPI Food Medan', city: 'Medan' }
+    { id: 1, code: 'CKD-01', name: 'CPI Food Cikande', city: 'Serang', access_code: '1234' },
+    { id: 2, code: 'SMG-01', name: 'CPI Food Semarang', city: 'Semarang', access_code: '1234' },
+    { id: 3, code: 'SBY-01', name: 'CPI Food Surabaya', city: 'Surabaya', access_code: '1234' },
+    { id: 4, code: 'MDN-01', name: 'CPI Food Medan', city: 'Medan', access_code: '1234' }
   ],
   users: [
     { id: 1, branch_id: null, username: 'admin.pusat', password_hash: '$2a$10$3euP6D5tEaVz1Z1rI7/21e0xXp6b5bKjJ3pU9L1fM6wX4nZ1b6hC6', full_name: 'Administrator Pusat', role: 'admin_pusat', is_active: 1 },
@@ -198,8 +198,8 @@ function runMockQuery(sql, params = []) {
   // INSERT INTO branches
   if (upper.startsWith('INSERT INTO BRANCHES')) {
     const newId = mockStorage.branches.length > 0 ? Math.max(...mockStorage.branches.map(b => b.id)) + 1 : 1;
-    const [code, name, city] = params;
-    const newBranch = { id: newId, code, name, city };
+    const [code, name, city, access_code] = params;
+    const newBranch = { id: newId, code, name, city, access_code: access_code || '1234' };
     mockStorage.branches.push(newBranch);
     return { insertId: newId, affectedRows: 1 };
   }
@@ -320,7 +320,7 @@ function runMockQuery(sql, params = []) {
       output_good_kg: Number(output_good_kg) || 0,
       total_reject_kg: Number(total_reject_kg) || 0,
       calculated_reject_pct: Number(calculated_reject_pct) || 0,
-      created_by: Number(created_by),
+      created_by: created_by ? Number(created_by) : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -379,7 +379,7 @@ function runMockQuery(sql, params = []) {
   if (upper.startsWith('INSERT INTO AUDIT_LOGS')) {
     const newId = mockStorage.audit_logs.length + 1;
     const [batch_id, user_id, action, details, ip_address] = params;
-    mockStorage.audit_logs.push({ id: newId, batch_id: batch_id ? Number(batch_id) : null, user_id: Number(user_id), action, details, ip_address, created_at: new Date().toISOString() });
+    mockStorage.audit_logs.push({ id: newId, batch_id: batch_id ? Number(batch_id) : null, user_id: user_id ? Number(user_id) : null, action, details, ip_address, created_at: new Date().toISOString() });
     return { insertId: newId, affectedRows: 1 };
   }
 

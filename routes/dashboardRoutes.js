@@ -1,19 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const dashboardController = require('../controllers/dashboardController');
-const { requireAuth } = require('../middleware/authMiddleware');
 const { enforceBranchScope } = require('../middleware/branchIsolation');
 
-router.get('/dashboard', requireAuth, enforceBranchScope, dashboardController.renderDashboard);
-router.get('/api/dashboard/metrics', requireAuth, enforceBranchScope, dashboardController.getMetricsApi);
+// Public Dashboard with optional branch filter
+router.get('/dashboard', enforceBranchScope, dashboardController.renderDashboard);
+router.get('/api/dashboard/metrics', enforceBranchScope, dashboardController.getMetricsApi);
 
 // Default redirect root to dashboard
 router.get('/', (req, res) => {
-  if (req.session && req.session.user) {
-    res.redirect('/dashboard');
-  } else {
-    res.redirect('/login');
-  }
+  res.redirect('/dashboard');
 });
 
 module.exports = router;

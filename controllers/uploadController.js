@@ -2,12 +2,11 @@ const fs = require('fs');
 const { parseLppExcel } = require('../services/excelParser');
 const { validateBatchData } = require('../services/validationService');
 const { transaction, query } = require('../config/database');
-const { ROLES } = require('../config/constants');
 
 /**
  * Saves all batch records in an atomic database transaction
  */
-async function saveBatchTransaction({ batchData, branchId, userId, ipAddress = null }) {
+async function saveBatchTransaction({ batchData, branchId, userId = null, ipAddress = null }) {
   return await transaction(async (conn) => {
     const { identity, materials, machineMetrics, rejects, outputs, fileHash, totalMaterialKg, outputGoodKg, totalRejectKg, calculatedRejectPct } = batchData;
 
@@ -118,7 +117,8 @@ async function saveBatchTransaction({ batchData, branchId, userId, ipAddress = n
       product: identity.productName,
       date: identity.productionDate,
       total_material_kg: totalMaterialKg,
-      output_good_kg: outputGoodKg
+      output_good_kg: outputGoodKg,
+      source: 'PLANT_PIN_UPLOAD'
     });
     await conn.execute(auditSql, [
       batchId,
@@ -136,11 +136,9 @@ const uploadController = {
   saveBatchTransaction,
 
   renderUploadForm: async (req, res) => {
-    // If user is central admin/analyst, allow branch selection
     const branches = await query('SELECT id, code, name, city FROM branches ORDER BY name ASC');
     res.render('upload/form', {
       title: 'Unggah LPP Excel - CPI Food Division',
-      user: req.session.user,
       branches,
       error: req.session.uploadError || null
     });
@@ -148,41 +146,107 @@ const uploadController = {
   },
 
   handleUploadProcess: async (req, res) => {
+    const isAjax = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('application/json'));
+
     if (!req.file) {
-      req.session.uploadError = 'Silakan pilih file Excel (.xlsx) terlebih dahulu.';
+      const errMsg = 'Silakan pilih berkas Excel (.xlsx) terlebih dahulu.';
+      if (isAjax) return res.status(400).json({ success: false, message: errMsg, errors: [errMsg] });
+      req.session.uploadError = errMsg;
       return res.redirect('/upload');
     }
 
     const filePath = req.file.path;
-    const user = req.session.user;
-    const targetBranchId = (user.role === ROLES.ADMIN_PUSAT || user.role === ROLES.ANALIS_PUSAT)
-      ? Number(req.body.branchId || user.branch_id || 1)
-      : user.branch_id;
+    const branchId = req.body.branchId ? Number(req.body.branchId) : null;
+    const accessCode = req.body.accessCode ? String(req.body.accessCode).trim() : '';
+
+    if (!branchId) {
+      if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+      const errMsg = 'Silakan pilih Cabang / Plant terlebih dahulu.';
+      if (isAjax) return res.status(400).json({ success: false, message: errMsg, errors: [errMsg] });
+      req.session.uploadError = errMsg;
+      return res.redirect('/upload');
+    }
+
+    if (!accessCode) {
+      if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+      const errMsg = 'Silakan masukkan Kode Akses / PIN Cabang.';
+      if (isAjax) return res.status(400).json({ success: false, message: errMsg, errors: [errMsg] });
+      req.session.uploadError = errMsg;
+      return res.redirect('/upload');
+    }
 
     try {
-      // 1. Parse Excel
-      const parsedData = await parseLppExcel(filePath);
-
-      // 2. Validate
-      const validation = await validateBatchData(parsedData, targetBranchId);
-
-      // 3. Immediately delete temp file
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      // 1. Validate Branch & Access Code
+      const branchRows = await query('SELECT id, code, name, city, access_code FROM branches WHERE id = ?', [branchId]);
+      if (!branchRows || branchRows.length === 0) {
+        if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+        const errMsg = 'Cabang yang dipilih tidak ditemukan di sistem.';
+        if (isAjax) return res.status(404).json({ success: false, message: errMsg, errors: [errMsg] });
+        req.session.uploadError = errMsg;
+        return res.redirect('/upload');
       }
 
-      // Fetch branch name
-      const branchRows = await query('SELECT name, code FROM branches WHERE id = ?', [targetBranchId]);
-      const branchName = branchRows.length > 0 ? branchRows[0].name : 'Cabang';
+      const branch = branchRows[0];
+      const validCode = branch.access_code ? String(branch.access_code).trim() : '1234';
+      const masterCode = process.env.MASTER_ACCESS_CODE ? String(process.env.MASTER_ACCESS_CODE).trim() : '8888';
 
-      // 4. Save to session for preview confirmation
+      if (accessCode !== validCode && accessCode !== masterCode) {
+        if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+        const errMsg = `Kode Akses / PIN untuk cabang ${branch.name} salah. (Default PIN: 1234)`;
+        if (isAjax) return res.status(403).json({ success: false, message: errMsg, errors: [errMsg] });
+        req.session.uploadError = errMsg;
+        return res.redirect('/upload');
+      }
+
+      // 2. Parse Excel
+      const parsedData = await parseLppExcel(filePath);
+
+      // 3. Validate Batch Data
+      const validation = await validateBatchData(parsedData, branch.id);
+
+      // 4. Immediately delete temp file
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+
+      // 5. Check if Excel has validation errors
+      if (!validation.isValid && isAjax) {
+        return res.status(422).json({
+          success: false,
+          message: 'Validasi data Excel menemukan ketidaksesuaian.',
+          errors: validation.errors,
+          warnings: validation.warnings
+        });
+      }
+
+      // 6. Save to session for preview confirmation
       req.session.pendingBatch = {
         data: parsedData,
-        branchId: targetBranchId,
-        branchName,
+        branchId: branch.id,
+        branchName: branch.name,
+        branchCode: branch.code,
+        accessCode,
         validation,
         uploadedAt: new Date().toISOString()
       };
+
+      if (isAjax) {
+        return res.json({
+          success: true,
+          message: 'Berkas Excel berhasil diekstrak dan divalidasi!',
+          redirectUrl: '/upload/preview',
+          summary: {
+            batchNumber: parsedData.identity.batchNumber,
+            productName: parsedData.identity.productName,
+            productionDate: parsedData.identity.productionDate,
+            line: parsedData.identity.line,
+            totalMaterialKg: parsedData.totalMaterialKg,
+            outputGoodKg: parsedData.outputGoodKg,
+            calculatedRejectPct: parsedData.calculatedRejectPct
+          },
+          warnings: validation.warnings || []
+        });
+      }
 
       res.redirect('/upload/preview');
     } catch (err) {
@@ -190,7 +254,9 @@ const uploadController = {
       if (fs.existsSync(filePath)) {
         try { fs.unlinkSync(filePath); } catch (_) {}
       }
-      req.session.uploadError = `Gagal memproses file: ${err.message}`;
+      const errMsg = `Gagal memproses file: ${err.message}`;
+      if (isAjax) return res.status(500).json({ success: false, message: errMsg, errors: [err.message] });
+      req.session.uploadError = errMsg;
       res.redirect('/upload');
     }
   },
@@ -203,9 +269,9 @@ const uploadController = {
 
     res.render('upload/preview', {
       title: 'Pratinjau Impor LPP - CPI Food Division',
-      user: req.session.user,
       batch: pendingBatch.data,
       branchName: pendingBatch.branchName,
+      branchCode: pendingBatch.branchCode,
       branchId: pendingBatch.branchId,
       validation: pendingBatch.validation
     });
@@ -222,12 +288,12 @@ const uploadController = {
       const result = await saveBatchTransaction({
         batchData: pendingBatch.data,
         branchId: pendingBatch.branchId,
-        userId: req.session.user.id,
+        userId: null,
         ipAddress: req.ip || req.connection.remoteAddress
       });
 
       delete req.session.pendingBatch;
-      req.session.successMessage = `Batch ${pendingBatch.data.identity.batchNumber} berhasil diimpor dan disimpan ke database!`;
+      req.session.successMessage = `Batch ${pendingBatch.data.identity.batchNumber} berhasil diimpor dan disimpan ke database untuk cabang ${pendingBatch.branchName}!`;
       res.redirect(`/batches/${result.batchId}`);
     } catch (err) {
       console.error('Error saving batch transaction:', err);
