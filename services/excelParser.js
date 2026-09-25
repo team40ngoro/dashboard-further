@@ -50,8 +50,18 @@ function parseNum(val) {
   if (typeof val === 'object' && val.result !== undefined) {
     return parseNum(val.result);
   }
-  const clean = String(val).replace(/,/g, '.').replace(/[^\d.-]/g, '');
-  if (!clean || clean === '-' || clean === '.') return null;
+  const str = String(val).trim();
+  // Machine codes and text words (e.g. "BC-01", "Fryer 1", "FLA-01", "HLT-01", "UNIMIX-01", "CP-NGR-230926-01", "Aktif", "Tidak dipakai", "Normal")
+  if (/^[a-zA-Z_-]+\s*\d+/i.test(str) && !/^\s*[-+]?\d+/i.test(str)) {
+    return null;
+  }
+  if (/^(?:aktif|tidak\s*dipakai|rusak|normal|hasil\s*uji|line)/i.test(str)) {
+    return null;
+  }
+  // Check if string starts with a valid number (e.g. "8 jam", "1800 RPM", "178,5", "-0,7")
+  const numMatch = str.match(/^[-+]?\d+(?:[.,]\d+)?/);
+  if (!numMatch) return null;
+  const clean = numMatch[0].replace(/,/g, '.');
   const num = parseFloat(clean);
   return isNaN(num) ? null : num;
 }
@@ -174,24 +184,56 @@ async function parseLppExcel(filePathOrBuffer) {
   const sheetBelakang = workbook.Sheets[sheetBelakangName];
 
   // 1. Ekstraksi Identitas (Sheet DEPAN)
-  // Mendukung posisi sel standar dan variasi format merger sel
-  const rawDate = getCellRaw(sheetDepan, 'E4') || getCellRaw(sheetDepan, 'F4') || getCellRaw(sheetDepan, 'G4');
+  // Sesuai layout visual LPP FP REV 2:
+  // C4/D4: Nama Produk, E4/F4/G4: Tanggal Produksi, H4/I4/J4/K4: Line, Q4/R4/S4/T4/U4: % Rijek
+  // C5/D5: Kode Produk, E5/F5: Waktu Kerja, H5/I5/J5/K5: No. Batch, N5/O5/P5: % Total Meat, Q5/R5: Produktifitas
+  const rawDate = getCellRaw(sheetDepan, 'F4') || getCellRaw(sheetDepan, 'E4') || getCellRaw(sheetDepan, 'G4');
   const normalizedDate = normalizeDate(rawDate);
 
   const rawProductName = getFirstValidStr(sheetDepan, ['C4', 'D4']);
   const rawProductCode = getFirstValidStr(sheetDepan, ['C5', 'D5']);
-  const rawLine = getFirstValidStr(sheetDepan, ['G4', 'H4', 'I4', 'K4']);
-  const rawBatchNumber = getFirstValidStr(sheetDepan, ['G5', 'H5', 'I5', 'K5']);
+
+  // Line: usually in K4, L4, J4, I4, H4, G4
+  let rawLine = '';
+  for (const addr of ['K4', 'L4', 'J4', 'I4', 'H4', 'G4']) {
+    const s = getCellStr(sheetDepan, addr);
+    const sLow = s.toLowerCase();
+    if (s && s !== ':' && s !== '-' && sLow !== 'line' && sLow !== 'line :' && !sLow.startsWith('%')) {
+      if (/^[\d.,]+$/.test(s) && addr === 'K4') {
+        const g4 = getCellStr(sheetDepan, 'G4');
+        if (g4 && !/^[\d.,]+$/.test(g4) && g4.toLowerCase() !== 'line' && g4.toLowerCase() !== 'line :') {
+          rawLine = g4;
+          break;
+        }
+      }
+      rawLine = s;
+      break;
+    }
+  }
+
+  // Batch Number: in K5, L5, J5, I5, H5, G5
+  let rawBatchNumber = '';
+  for (const addr of ['K5', 'L5', 'J5', 'I5', 'H5', 'G5']) {
+    const s = getCellStr(sheetDepan, addr);
+    const sLow = s.toLowerCase();
+    if (s && s !== ':' && s !== '-' && sLow !== 'no. batch' && sLow !== 'no. batch :' && sLow !== 'batch' && sLow !== 'batch :' && sLow !== 'no batch') {
+      if (/^\d+\s*(?:jam)?$/i.test(s) && (addr === 'G5' || addr === 'F5' || addr === 'E5')) {
+        continue;
+      }
+      rawBatchNumber = s;
+      break;
+    }
+  }
 
   const identity = {
     productName: rawProductName,
     productCode: rawProductCode,
     productionDate: normalizedDate,
-    workHours: getFirstValidNum(sheetDepan, ['E5', 'F5']),
-    line: (rawLine && rawLine.toLowerCase() !== 'line') ? rawLine : '',
-    batchNumber: (rawBatchNumber && rawBatchNumber.toLowerCase() !== 'jam' && rawBatchNumber.toLowerCase() !== 'no. batch') ? rawBatchNumber : '',
-    meatPercentage: getFirstValidNum(sheetDepan, ['K4', 'N5', 'O5', 'P5']),
-    formRejectPercentage: getFirstValidNum(sheetDepan, ['M4', 'Q4', 'R4', 'S4'])
+    workHours: getFirstValidNum(sheetDepan, ['F5', 'G5', 'E5']),
+    line: rawLine,
+    batchNumber: rawBatchNumber,
+    meatPercentage: getFirstValidNum(sheetDepan, ['P5', 'O5', 'N5', 'K4', 'L4']),
+    formRejectPercentage: getFirstValidNum(sheetDepan, ['P4', 'T4', 'S4', 'R4', 'Q4', 'M4', 'L4'])
   };
 
   // Cek apakah file merupakan template kosong (belum diisi data sama sekali)
@@ -203,42 +245,62 @@ async function parseLppExcel(filePathOrBuffer) {
     if (!identity.productName) errors.push('Nama Produk (sel C4/D4) wajib diisi.');
     if (!identity.productCode) errors.push('Kode Produk (sel C5/D5) wajib diisi.');
     if (!identity.productionDate) errors.push('Tanggal Produksi (sel E4/F4) wajib diisi dengan format tanggal yang benar.');
-    if (!identity.line) errors.push('Line Produksi (sel G4/K4) wajib diisi.');
-    if (!identity.batchNumber) errors.push('Nomor Batch (sel G5/K5) wajib diisi.');
+    if (!identity.line) errors.push('Line Produksi (sel H4/K4) wajib diisi.');
+    if (!identity.batchNumber) errors.push('Nomor Batch (sel H5/K5) wajib diisi.');
   }
 
-  // 2. Ekstraksi Bahan Baku (Sheet DEPAN)
+  // 2. Ekstraksi Bahan Baku (Sheet DEPAN: Kolom A, B, C, D, E)
   const materials = [];
 
-  // Baris Bahan Baku Utama (8-12)
-  const rawMatDefs = [
-    { row: 8, defName: 'SBB/Dp BL/BB', cat: 'bahan_baku' },
-    { row: 9, defName: 'Skin', cat: 'bahan_baku' },
-    { row: 10, defName: 'Emulsi', cat: 'bahan_baku' },
-    { row: 11, defName: 'Terigu', cat: 'bahan_baku' },
-    { row: 12, defName: 'SAP', cat: 'bahan_baku' }
-  ];
+  // Pindai Baris Bahan Baku Utama (Baris 8 hingga 20)
+  for (let r = 8; r <= 20; r++) {
+    const rawName = getCellStr(sheetDepan, `A${r}`);
+    if (rawName && rawName.toLowerCase() !== 'bahan baku' && rawName.toLowerCase() !== 'bahan - bahan baku' && rawName.toLowerCase() !== 'total' && rawName.toLowerCase() !== 'penggunaan') {
+      const eNum = getCellNum(sheetDepan, `E${r}`);
+      const dNum = getCellNum(sheetDepan, `D${r}`);
+      const cNum = getCellNum(sheetDepan, `C${r}`);
 
-  rawMatDefs.forEach(item => {
-    const customName = getCellStr(sheetDepan, `A${item.row}`) || item.defName;
-    const batchCode = getCellStr(sheetDepan, `C${item.row}`) || getCellStr(sheetDepan, `B${item.row}`);
-    const temp = getCellNum(sheetDepan, `D${item.row}`) !== null ? getCellNum(sheetDepan, `D${item.row}`) : getCellNum(sheetDepan, `C${item.row}`);
-    const weight = getCellNum(sheetDepan, `E${item.row}`) !== null ? getCellNum(sheetDepan, `E${item.row}`) : getCellNum(sheetDepan, `D${item.row}`);
-    
-    if (weight !== null && weight > 0) {
-      materials.push({
-        category: item.cat,
-        itemName: customName,
-        batchCode: (batchCode && batchCode !== customName) ? batchCode : null,
-        temperatureC: temp,
-        weightKg: weight
-      });
+      let weight = null;
+      let temp = null;
+      let batchCode = null;
+
+      if (eNum !== null && eNum > 0) {
+        weight = eNum;
+        temp = dNum;
+        batchCode = getCellStr(sheetDepan, `C${r}`) || getCellStr(sheetDepan, `B${r}`);
+      } else if (dNum !== null && dNum > 0) {
+        weight = dNum;
+        temp = cNum;
+        batchCode = getCellStr(sheetDepan, `B${r}`);
+      }
+
+      if (weight !== null && weight > 0) {
+        materials.push({
+          category: 'bahan_baku',
+          itemName: rawName,
+          batchCode: (batchCode && batchCode !== rawName && batchCode !== 'SAP') ? batchCode : null,
+          temperatureC: temp,
+          weightKg: weight
+        });
+      }
     }
-  });
+  }
 
-  // Marinade / TSP
-  const airMarinadeWeight = getCellNum(sheetDepan, 'E17') || getCellNum(sheetDepan, 'D17') || getCellNum(sheetDepan, 'E27') || getCellNum(sheetDepan, 'D27');
-  const airMarinadeTemp = getCellNum(sheetDepan, 'D18') || getCellNum(sheetDepan, 'C18') || getCellNum(sheetDepan, 'D28');
+  // Marinade / TSP (Baris 26-28)
+  const marinadeWeight = getCellNum(sheetDepan, 'D26') || getCellNum(sheetDepan, 'E26');
+  const marinadeBatch = getCellStr(sheetDepan, 'B26');
+  if (marinadeWeight !== null && marinadeWeight > 0) {
+    materials.push({
+      category: 'marinade_tsp',
+      itemName: 'Marinade/ TSP',
+      batchCode: marinadeBatch || null,
+      temperatureC: null,
+      weightKg: marinadeWeight
+    });
+  }
+
+  const airMarinadeWeight = getCellNum(sheetDepan, 'D27') || getCellNum(sheetDepan, 'E27') || getCellNum(sheetDepan, 'D17') || getCellNum(sheetDepan, 'E17');
+  const airMarinadeTemp = getCellNum(sheetDepan, 'C28') || getCellNum(sheetDepan, 'D28') || getCellNum(sheetDepan, 'C18');
   if (airMarinadeWeight !== null && airMarinadeWeight > 0) {
     materials.push({
       category: 'marinade_tsp',
@@ -249,54 +311,49 @@ async function parseLppExcel(filePathOrBuffer) {
     });
   }
 
-  const sayuranWeight = getCellNum(sheetDepan, 'E19') || getCellNum(sheetDepan, 'D19') || getCellNum(sheetDepan, 'E30') || getCellNum(sheetDepan, 'D30');
+  // Sayuran (Baris 30)
+  const sayuranWeight = getCellNum(sheetDepan, 'D30') || getCellNum(sheetDepan, 'E30') || getCellNum(sheetDepan, 'D19') || getCellNum(sheetDepan, 'E19');
+  const sayuranBatch = getCellStr(sheetDepan, 'B30');
+  const sayuranTemp = getCellNum(sheetDepan, 'C30');
   if (sayuranWeight !== null && sayuranWeight > 0) {
     materials.push({
       category: 'marinade_tsp',
-      itemName: getCellStr(sheetDepan, 'A19') || getCellStr(sheetDepan, 'A30') || 'Sayuran',
-      batchCode: null,
-      temperatureC: null,
+      itemName: getCellStr(sheetDepan, 'A30') || 'Sayuran',
+      batchCode: sayuranBatch || null,
+      temperatureC: sayuranTemp,
       weightKg: sayuranWeight
     });
   }
 
-  // Lain-lain
-  const lainLainWeight = getCellNum(sheetDepan, 'E24') || getCellNum(sheetDepan, 'D24') || getCellNum(sheetDepan, 'E26') || getCellNum(sheetDepan, 'D26');
+  // Lain-lain (Baris 39 / 24)
+  const lainLainWeight = getCellNum(sheetDepan, 'D39') || getCellNum(sheetDepan, 'E39') || getCellNum(sheetDepan, 'D24') || getCellNum(sheetDepan, 'E24');
+  const lainLainBatch = getCellStr(sheetDepan, 'B39');
   if (lainLainWeight !== null && lainLainWeight > 0) {
     materials.push({
       category: 'lain_lain',
-      itemName: getCellStr(sheetDepan, 'A24') || getCellStr(sheetDepan, 'A26') || 'Lain-lain',
-      batchCode: null,
+      itemName: getCellStr(sheetDepan, 'A39') || 'Lain-lain',
+      batchCode: lainLainBatch || null,
       temperatureC: null,
       weightKg: lainLainWeight
     });
   }
 
-  // Batter & Breader
-  const batterWeight = getCellNum(sheetDepan, 'E28') || getCellNum(sheetDepan, 'D28') || getCellNum(sheetDepan, 'E8') || getCellNum(sheetDepan, 'D8');
-  if (batterWeight !== null && batterWeight > 0 && !materials.some(m => m.itemName === 'Batter')) {
+  // Batter (Baris 46 / 28)
+  const batterWeight = getCellNum(sheetDepan, 'D46') || getCellNum(sheetDepan, 'E46') || getCellNum(sheetDepan, 'D28') || getCellNum(sheetDepan, 'E28');
+  const batterBatch = getCellStr(sheetDepan, 'B46') || getCellStr(sheetDepan, 'B28');
+  if (batterWeight !== null && batterWeight > 0 && !materials.some(m => m.itemName.toLowerCase() === 'batter')) {
     materials.push({
       category: 'batter',
       itemName: 'Batter',
-      batchCode: null,
+      batchCode: batterBatch || null,
       temperatureC: null,
       weightKg: batterWeight
     });
   }
 
-  const airBatterWeight = getCellNum(sheetDepan, 'E29') || getCellNum(sheetDepan, 'D29');
-  if (airBatterWeight !== null && airBatterWeight > 0) {
-    materials.push({
-      category: 'batter',
-      itemName: 'Air (Batter)',
-      batchCode: null,
-      temperatureC: null,
-      weightKg: airBatterWeight
-    });
-  }
-
-  const breaderWeight = getCellNum(sheetDepan, 'E34') || getCellNum(sheetDepan, 'D34') || getCellNum(sheetDepan, 'E14') || getCellNum(sheetDepan, 'D14');
-  if (breaderWeight !== null && breaderWeight > 0) {
+  // Breader / Predust (Baris 34 / 14)
+  const breaderWeight = getCellNum(sheetDepan, 'D34') || getCellNum(sheetDepan, 'E34') || getCellNum(sheetDepan, 'D14') || getCellNum(sheetDepan, 'E14');
+  if (breaderWeight !== null && breaderWeight > 0 && !materials.some(m => m.itemName.toLowerCase().includes('breader'))) {
     materials.push({
       category: 'predust_breader',
       itemName: 'Predust & Breader',
@@ -322,7 +379,7 @@ async function parseLppExcel(filePathOrBuffer) {
         break;
       }
       const s = getCellStr(sheetDepan, addr);
-      if (s && s !== '-' && s !== ':') {
+      if (s && s !== '-' && s !== ':' && s !== 'Normal') {
         valStr = s;
         break;
       }
@@ -340,36 +397,46 @@ async function parseLppExcel(filePathOrBuffer) {
     }
   }
 
-  // Parameter Ruang & Mesin
+  // Center Column: Kolom E, F, G
   addMetric('Ruang', 'Suhu ruang Meatprep', '°C', ['G8', 'F8', 'E8']);
   addMetric('Ruang', 'Suhu Ruang Chillroom', '°C', ['G9', 'F9', 'E9']);
-  addMetric('Bowl Cutter', 'Speed', 'RPM', ['G11', 'F11', 'G12']);
-  addMetric('Bowl Cutter', 'Suhu Emulsi', '°C', ['G12', 'F12', 'E13']);
-  addMetric('Grinder', 'Ukuran Saringan', 'mm', ['G14', 'F14', 'E17']);
-  addMetric('Grinder', 'Hasil', 'kg', ['G15', 'F15', 'E18']);
-  addMetric('Mixer Preparation', 'Suhu Air', '°C', ['G17', 'F17', 'E21']);
-  addMetric('Mixer Preparation', 'Lama Pengadukan', 'menit', ['G18', 'F18', 'E22']);
-  addMetric('Mixer Preparation', 'Viscositas', 'cP', ['G20', 'F20', 'E24']);
-  addMetric('Mixer Preparation', 'Salinitas', '%', ['G21', 'F21', 'E25']);
-  addMetric('Mixer Unimix', 'Suhu Adonan', '°C', ['G23', 'F23', 'E28']);
-  addMetric('Preparasi Fla', 'Suhu Fla after Cooling', '°C', ['G25', 'F25', 'E30']);
-  addMetric('Tumbler', 'Drum Speed', 'RPM', ['G28', 'F28']);
-  addMetric('Tumbler', 'Total Lama Waktu', 'menit', ['G29', 'F29']);
-  addMetric('Forming / Revo', 'Suhu Adonan', '°C', ['G35', 'F35']);
-  addMetric('Forming / Revo', 'Pressure', 'bar', ['G36', 'F36']);
-  addMetric('Forming / Revo', 'Speed', 'spm', ['G37', 'F37']);
+  addMetric('Bowl Cutter', 'Speed', 'RPM', ['G12', 'F12', 'G11', 'F11']);
+  addMetric('Bowl Cutter', 'Suhu Emulsi', '°C', ['G13', 'F13', 'G12', 'F12']);
+  addMetric('Bowl Cutter', 'Homogenisasi/Orlap', 'menit', ['G14', 'F14']);
+  addMetric('Grinder', 'Ukuran Saringan', 'mm', ['G17', 'F17', 'G14', 'F14']);
+  addMetric('Grinder', 'Hasil', 'kg', ['G18', 'F18', 'G15', 'F15']);
+  addMetric('Mixer Preparation', 'Suhu Air', '°C', ['G21', 'F21', 'G17', 'F17']);
+  addMetric('Mixer Preparation', 'Lama Pengadukan', 'menit', ['G22', 'F22', 'G18', 'F18']);
+  addMetric('Mixer Preparation', 'Filter', 'mesh', ['G23', 'F23']);
+  addMetric('Mixer Preparation', 'Viscositas', 'cP', ['G24', 'F24', 'G20', 'F20']);
+  addMetric('Mixer Preparation', 'Salinitas', '%', ['G25', 'F25', 'G21', 'F21']);
+  addMetric('Mixer Unimix', 'Suhu Adonan', '°C', ['G28', 'F28', 'G23', 'F23']);
+  addMetric('Preparasi Fla', 'Homogenisasi/Orlap', 'menit', ['G31', 'F31']);
+  addMetric('Preparasi Fla', 'Suhu Fla after Cooling', '°C', ['G32', 'F32', 'G25', 'F25']);
+  addMetric('Tumbler', 'Drum On', 'menit', ['G35', 'F35']);
+  addMetric('Tumbler', 'Drum Off', 'menit', ['G36', 'F36']);
+  addMetric('Tumbler', 'Vaccum', 'bar', ['G37', 'F37']);
+  addMetric('Tumbler', 'Drum Speed', 'RPM', ['G39', 'F39', 'G28', 'F28']);
+  addMetric('Tumbler', 'Total Lama Waktu', 'menit', ['G40', 'F40', 'G29', 'F29']);
+  addMetric('Forming / Revo', 'Suhu Adonan', '°C', ['G46', 'F46', 'G35', 'F35']);
+  addMetric('Forming / Revo', 'Pressure', 'bar', ['G47', 'F47', 'G36', 'F36']);
+  addMetric('Forming / Revo', 'Speed', 'spm', ['G48', 'F48', 'G37', 'F37']);
 
-  addMetric('Batter Station', 'Suhu Batter', '°C', ['M8', 'L8', 'N9', 'O9']);
-  addMetric('Batter Station', 'Viscositas', 'sec', ['M9', 'L9', 'N10', 'O10']);
-  addMetric('Batter Station', 'Salinitas', '%', ['M10', 'L10', 'N11', 'O11']);
-  addMetric('Fryer', 'Suhu Seting', '°C', ['M15', 'L15', 'N19', 'O19'], 'setting');
-  addMetric('Fryer', 'Suhu Aktual', '°C', ['M16', 'L16', 'N20', 'O20'], 'actual');
-  addMetric('Fryer', 'Lama Pemasakan', 'detik', ['M17', 'L17', 'N21', 'O21']);
-  addMetric('Fryer', 'TPM Minyak', '%', ['M18', 'L18', 'N22', 'O22']);
-  addMetric('HLT', 'Suhu Awal Daging', '°C', ['M20', 'L20', 'N28', 'O28']);
-  addMetric('HLT', 'Suhu Infeed', '°C', ['M21', 'L21', 'N29', 'O29']);
-  addMetric('HLT', 'Suhu OutFeed', '°C', ['M22', 'L22', 'N30', 'O30']);
-  addMetric('Kualitas Produk', 'Suhu Pusat (CT)', '°C', ['M27', 'L27', 'A10', 'B10']);
+  // Right Column: Kolom N, O, P, Q
+  addMetric('Batter Station', 'Suhu Batter', '°C', ['P9', 'Q9', 'M8', 'L8']);
+  addMetric('Batter Station', 'Viscositas', 'sec', ['P10', 'Q10', 'M9', 'L9']);
+  addMetric('Batter Station', 'Salinitas', '%', ['P11', 'Q11', 'M10', 'L10']);
+  addMetric('Fryer', 'Suhu Seting', '°C', ['P20', 'P19', 'Q20', 'Q19', 'M15', 'L15'], 'setting');
+  addMetric('Fryer', 'Suhu Aktual', '°C', ['P21', 'P20', 'Q21', 'Q20', 'M16', 'L16'], 'actual');
+  addMetric('Fryer', 'Lama Pemasakan', 'detik', ['P22', 'P21', 'Q22', 'Q21', 'M17', 'L17']);
+  addMetric('Fryer', 'TPM Minyak', '%', ['P23', 'P22', 'Q23', 'Q22', 'M18', 'L18']);
+  addMetric('HLT', 'Suhu Awal Daging', '°C', ['P28', 'Q28', 'M20', 'L20']);
+  addMetric('HLT', 'Suhu Infeed', '°C', ['P29', 'Q29', 'M21', 'L21']);
+  addMetric('HLT', 'Suhu OutFeed', '°C', ['P30', 'Q30', 'M22', 'L22']);
+  addMetric('Cooker', 'Steam Valve', '%', ['P32', 'Q32']);
+  addMetric('Cooker', 'Speed Ventilator', 'RPM', ['P33', 'Q33']);
+  addMetric('Cooker', 'Lama Pemasakan', 'menit', ['P34', 'Q34']);
+  addMetric('Kualitas Produk', 'Suhu Pusat (CT)', '°C', ['P38', 'Q38', 'M27', 'L27']);
 
   // Metrik Ruang Packing (dari BELAKANG)
   const packingTemp = getCellNum(sheetBelakang, 'C4') || getCellNum(sheetBelakang, 'B7') || getCellNum(sheetBelakang, 'C7');
