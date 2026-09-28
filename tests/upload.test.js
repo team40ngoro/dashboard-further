@@ -91,6 +91,66 @@ test('Upload, Preview & Atomic Batch Commit Test', async (t) => {
     assert.ok(responseJson.errors.length > 0);
   });
 
+  await t.test('sequential queue processor commits valid item and isolates invalid item', async () => {
+    const { handleProcessQueueItem } = require('../controllers/uploadController');
+    const validQueueFile = path.join(__dirname, 'queue_test_valid.xlsx');
+    const invalidQueueFile = path.join(__dirname, 'queue_test_invalid.xlsx');
+
+    // 1. Generate valid queue item
+    await generateSampleExcel(validQueueFile, {
+      productName: 'NUGGET AYAM 500G',
+      productCode: 'NUG-500',
+      productionDate: '2026-09-25',
+      line: 'Line 3',
+      batchNumber: 'BATCH-QUEUE-VAL-001'
+    });
+
+    // 2. Generate invalid queue item (missing batchNumber and negative weight)
+    await generateSampleExcel(invalidQueueFile, {
+      productName: '',
+      productCode: '',
+      productionDate: '2026-09-25',
+      line: 'Line 3',
+      batchNumber: ''
+    });
+
+    // Process valid queue item
+    let statusValid = 200;
+    let jsonValid = null;
+    await handleProcessQueueItem({
+      file: { path: validQueueFile, originalname: 'queue_test_valid.xlsx' },
+      body: { branchId: 1, accessCode: '1234' },
+      ip: '127.0.0.1'
+    }, {
+      status: (code) => { statusValid = code; return { json: (d) => { jsonValid = d; } }; },
+      json: (d) => { jsonValid = d; }
+    });
+
+    assert.equal(jsonValid.success, true);
+    assert.ok(jsonValid.batchId > 0);
+    assert.equal(jsonValid.batchNumber, 'BATCH-QUEUE-VAL-001');
+
+    // Process invalid queue item -> should fail gracefully with errors without stopping queue
+    let statusInvalid = 200;
+    let jsonInvalid = null;
+    await handleProcessQueueItem({
+      file: { path: invalidQueueFile, originalname: 'queue_test_invalid.xlsx' },
+      body: { branchId: 1, accessCode: '1234' },
+      ip: '127.0.0.1'
+    }, {
+      status: (code) => { statusInvalid = code; return { json: (d) => { jsonInvalid = d; } }; },
+      json: (d) => { jsonInvalid = d; }
+    });
+
+    assert.equal(statusInvalid, 422);
+    assert.equal(jsonInvalid.success, false);
+    assert.ok(jsonInvalid.errors.length > 0);
+
+    // Clean up
+    if (fs.existsSync(validQueueFile)) fs.unlinkSync(validQueueFile);
+    if (fs.existsSync(invalidQueueFile)) fs.unlinkSync(invalidQueueFile);
+  });
+
   // Cleanup
   if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
 });

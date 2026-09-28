@@ -18,22 +18,22 @@ async function generateSampleExcel(outputPath, customData = {}) {
 
   // Identity
   wsDepan.getCell('A4').value = 'Nama Produk :';
-  wsDepan.getCell('C4').value = customData.productName || 'NUGGET AYAM 500G';
+  wsDepan.getCell('C4').value = customData.productName !== undefined ? customData.productName : 'NUGGET AYAM 500G';
 
   wsDepan.getCell('A5').value = 'Kode Produk :';
-  wsDepan.getCell('C5').value = customData.productCode || 'NUG-500';
+  wsDepan.getCell('C5').value = customData.productCode !== undefined ? customData.productCode : 'NUG-500';
 
   wsDepan.getCell('D4').value = 'Tgl. Produksi :';
-  wsDepan.getCell('E4').value = customData.productionDate || '2026-09-24';
+  wsDepan.getCell('E4').value = customData.productionDate !== undefined ? customData.productionDate : '2026-09-24';
 
   wsDepan.getCell('D5').value = 'Waktu Kerja :';
   wsDepan.getCell('E5').value = customData.workHours !== undefined ? customData.workHours : 8.0;
 
   wsDepan.getCell('F4').value = 'Line :';
-  wsDepan.getCell('G4').value = customData.line || 'Line 1';
+  wsDepan.getCell('G4').value = customData.line !== undefined ? customData.line : 'Line 1';
 
   wsDepan.getCell('F5').value = 'No. Batch :';
-  wsDepan.getCell('G5').value = customData.batchNumber || 'BATCH-20260924-001';
+  wsDepan.getCell('G5').value = customData.batchNumber !== undefined ? customData.batchNumber : 'BATCH-20260924-001';
 
   wsDepan.getCell('J4').value = '% Total Meat :';
   wsDepan.getCell('K4').value = customData.meatPercentage !== undefined ? customData.meatPercentage : 55.5;

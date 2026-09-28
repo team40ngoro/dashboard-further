@@ -70,7 +70,7 @@ function initAllCharts(metrics) {
 
   const c = metrics.charts || {};
 
-  // 1. Chart Output vs Material Trend (Kg)
+  // 1. Chart Finished Goods vs Material Trend (Kg)
   const ctxOutput = document.getElementById('chartOutputTrend')?.getContext('2d');
   if (ctxOutput) {
     safeDestroyChart('output');
@@ -81,7 +81,7 @@ function initAllCharts(metrics) {
         datasets: [
           {
             type: 'bar',
-            label: 'Output Baik (Kg)',
+            label: 'Finished Goods (Kg)',
             data: c.outputTrend?.outputData || [],
             backgroundColor: 'rgba(5, 150, 105, 0.85)',
             borderColor: '#059669',

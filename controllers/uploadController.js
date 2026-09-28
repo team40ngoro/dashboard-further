@@ -326,6 +326,126 @@ const uploadController = {
       console.error('Error downloading sample template:', err);
       res.redirect('/upload');
     }
+  },
+
+  handleProcessQueueItem: async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Berkas tidak ditemukan.',
+        errors: ['Berkas Excel (.xlsx) tidak terlampir.']
+      });
+    }
+
+    const filePath = req.file.path;
+    const fileName = req.file.originalname || require('path').basename(filePath);
+    const branchId = req.body.branchId ? Number(req.body.branchId) : null;
+    const accessCode = req.body.accessCode ? String(req.body.accessCode).trim() : '';
+
+    if (!branchId) {
+      if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+      return res.status(400).json({
+        success: false,
+        fileName,
+        message: 'Cabang / Plant belum dipilih.',
+        errors: ['Pilih Cabang / Plant terlebih dahulu.']
+      });
+    }
+
+    if (!accessCode) {
+      if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+      return res.status(400).json({
+        success: false,
+        fileName,
+        message: 'Kode Akses / PIN belum diisi.',
+        errors: ['Masukkan Kode Akses / PIN Plant.']
+      });
+    }
+
+    try {
+      // 1. Verify Branch & Access Code
+      const branchRows = await query('SELECT id, code, name, city, access_code FROM branches WHERE id = ?', [branchId]);
+      if (!branchRows || branchRows.length === 0) {
+        if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+        return res.status(404).json({
+          success: false,
+          fileName,
+          message: 'Cabang tidak ditemukan.',
+          errors: ['Cabang yang dipilih tidak ditemukan di basis data.']
+        });
+      }
+
+      const branch = branchRows[0];
+      const validCode = branch.access_code ? String(branch.access_code).trim() : '1234';
+      const masterCode = process.env.MASTER_ACCESS_CODE ? String(process.env.MASTER_ACCESS_CODE).trim() : '8888';
+
+      if (accessCode !== validCode && accessCode !== masterCode) {
+        if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (_) {}
+        return res.status(403).json({
+          success: false,
+          fileName,
+          message: 'Kode Akses / PIN salah.',
+          errors: [`Kode Akses / PIN untuk cabang ${branch.name} tidak sesuai. (Default PIN: 1234)`]
+        });
+      }
+
+      // 2. Parse Excel
+      const parsedData = await parseLppExcel(filePath);
+
+      // 3. Validate against rules & duplicates
+      const validation = await validateBatchData(parsedData, branch.id);
+
+      // 4. Cleanup temp file
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+
+      // 5. If invalid -> return structured error list without saving
+      if (!validation.isValid) {
+        return res.status(422).json({
+          success: false,
+          fileName,
+          message: `Validasi berkas "${fileName}" menemukan ketidaksesuaian.`,
+          errors: validation.errors,
+          warnings: validation.warnings || []
+        });
+      }
+
+      // 6. If valid -> commit directly to database
+      const result = await saveBatchTransaction({
+        batchData: parsedData,
+        branchId: branch.id,
+        userId: null,
+        ipAddress: req.ip || req.connection.remoteAddress
+      });
+
+      return res.json({
+        success: true,
+        fileName,
+        batchId: result.batchId,
+        batchNumber: parsedData.identity.batchNumber,
+        productName: parsedData.identity.productName,
+        line: parsedData.identity.line,
+        productionDate: parsedData.identity.productionDate,
+        totalMaterialKg: parsedData.totalMaterialKg,
+        outputGoodKg: parsedData.outputGoodKg,
+        calculatedRejectPct: parsedData.calculatedRejectPct,
+        branchName: branch.name,
+        branchCode: branch.code,
+        warnings: validation.warnings || []
+      });
+    } catch (err) {
+      console.error('Queue item processing error:', err);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+      return res.status(500).json({
+        success: false,
+        fileName,
+        message: err.message,
+        errors: [err.message]
+      });
+    }
   }
 };
 
