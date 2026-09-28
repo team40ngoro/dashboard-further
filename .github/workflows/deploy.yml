@@ -50,13 +50,21 @@ jobs:
 
     steps:
       - name: Deploy & Reload PM2 on Local Server
+        env:
+          HOME: /root
         run: |
+          # 1. Pastikan environment HOME dan PATH tersedia untuk service runner
+          export HOME="${HOME:-/root}"
+          [ -z "$HOME" ] && export HOME="/root"
+          export PATH="$PATH:/usr/local/bin:/usr/bin:/bin"
+          
           echo "🚀 [CI/CD] Mulai proses deployment otomatis di server internal 10.68.8.219..."
           
-          # 1. Bypass awal untuk aturan safe directory global
-          git config --global --add safe.directory '*'
+          # 2. Bypass safe directory untuk Git (global & system)
+          git config --global --add safe.directory '*' 2>/dev/null || true
+          sudo git config --system --add safe.directory '*' 2>/dev/null || true
           
-          # 2. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
+          # 3. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
           RAW_PATH="${{ secrets.DEPLOY_PATH || '/opt/further-dashboard' }}"
           DEPLOY_DIR=$(echo "$RAW_PATH" | sed -e 's/^cd //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           
@@ -66,18 +74,17 @@ jobs:
           
           echo "📁 Target direktori deployment: $DEPLOY_DIR"
           
-          # 3. Buat direktori dan pastikan kepemilikan user
+          # 4. Buat direktori dan pastikan kepemilikan user
           mkdir -p "$DEPLOY_DIR" 2>/dev/null || sudo mkdir -p "$DEPLOY_DIR"
-          sudo chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || true
+          chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || sudo chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || true
 
           # Masuk ke direktori target
           cd "$DEPLOY_DIR"
-          
-          # 4. Daftarkan direktori ini ke safe.directory setelah masuk
-          git config --global --add safe.directory "$DEPLOY_DIR"
+          git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
           
           # 5. Sinkronisasi repository secara aman
           echo "📥 1. Mengambil dan menyinkronkan kode terbaru dari repository GitHub..."
+          export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
           
           if [ ! -d ".git" ]; then
             echo "🔧 Menginisialisasi ulang repositori Git di $DEPLOY_DIR..."
