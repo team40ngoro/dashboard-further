@@ -136,9 +136,17 @@ const uploadController = {
   saveBatchTransaction,
 
   renderUploadForm: async (req, res) => {
-    const branches = await query('SELECT id, code, name, city FROM branches ORDER BY name ASC');
+    const user = req.session ? req.session.user : null;
+    let branches;
+    if (user && user.branch_id) {
+      branches = await query('SELECT id, code, name, city FROM branches WHERE id = ?', [user.branch_id]);
+    } else {
+      branches = await query('SELECT id, code, name, city FROM branches ORDER BY name ASC');
+    }
+
     res.render('upload/form', {
       title: 'Unggah LPP Excel - CPI Food Division',
+      user,
       branches,
       error: req.session.uploadError || null
     });
@@ -156,7 +164,10 @@ const uploadController = {
     }
 
     const filePath = req.file.path;
-    const branchId = req.body.branchId ? Number(req.body.branchId) : null;
+    let branchId = req.body.branchId ? Number(req.body.branchId) : null;
+    if (req.session && req.session.user && req.session.user.branch_id) {
+      branchId = Number(req.session.user.branch_id);
+    }
     const accessCode = req.body.accessCode ? String(req.body.accessCode).trim() : '';
 
     if (!branchId) {
@@ -339,7 +350,10 @@ const uploadController = {
 
     const filePath = req.file.path;
     const fileName = req.file.originalname || require('path').basename(filePath);
-    const branchId = req.body.branchId ? Number(req.body.branchId) : null;
+    let branchId = req.body.branchId ? Number(req.body.branchId) : null;
+    if (req.session && req.session.user && req.session.user.branch_id) {
+      branchId = Number(req.session.user.branch_id);
+    }
     const accessCode = req.body.accessCode ? String(req.body.accessCode).trim() : '';
 
     if (!branchId) {
@@ -415,7 +429,7 @@ const uploadController = {
       const result = await saveBatchTransaction({
         batchData: parsedData,
         branchId: branch.id,
-        userId: null,
+        userId: req.session && req.session.user ? req.session.user.id : null,
         ipAddress: req.ip || req.connection.remoteAddress
       });
 

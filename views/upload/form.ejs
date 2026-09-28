@@ -29,12 +29,25 @@
           <div class="grid-2-cols mb-3">
             <div class="form-group">
               <label for="branchId" class="form-label font-semibold">Cabang / Plant Produksi <span class="text-danger">*</span></label>
-              <select name="branchId" id="branchId" class="form-select" required>
-                <option value="">-- Pilih Cabang --</option>
-                <% branches.forEach(b => { %>
-                  <option value="<%= b.id %>"><%= b.code %> - <%= b.name %></option>
-                <% }) %>
-              </select>
+              <% if (typeof user !== 'undefined' && user && user.branch_id) { 
+                   const userBranch = branches.find(b => b.id === user.branch_id);
+              %>
+                <div class="form-input" style="background-color: var(--bg-tertiary); display: flex; align-items: center; justify-content: space-between; cursor: default; border-color: var(--border-color);">
+                  <span class="font-bold flex items-center gap-2">
+                    <span class="badge badge-branch"><%= userBranch ? userBranch.code : (user.branch_code || 'CABANG') %></span>
+                    <%= userBranch ? userBranch.name : (user.branch_name || 'Cabang Anda') %>
+                  </span>
+                  <span class="text-xs text-muted font-medium">🔒 Terkunci Otomatis</span>
+                </div>
+                <input type="hidden" name="branchId" id="branchId" value="<%= user.branch_id %>">
+              <% } else { %>
+                <select name="branchId" id="branchId" class="form-select" required>
+                  <option value="">-- Pilih Cabang --</option>
+                  <% branches.forEach(b => { %>
+                    <option value="<%= b.id %>"><%= b.code %> - <%= b.name %></option>
+                  <% }) %>
+                </select>
+              <% } %>
             </div>
 
             <div class="form-group">

@@ -30,25 +30,22 @@
       <div class="card-body">
         <form action="/admin/branches" method="POST" id="createBranchForm">
           <div class="form-group mb-3">
-            <div class="flex items-center justify-between mb-1">
-              <label for="code" class="form-label font-semibold mb-0">Kode Cabang</label>
-              <span class="text-xs text-primary font-medium" id="codeAutoBadge">✨ Otomatis dari Kota</span>
-            </div>
-            <div class="relative">
-              <input type="text" name="code" id="code" class="form-input uppercase font-mono font-bold tracking-wider" placeholder="Otomatis terisi (Contoh: PLM-01)" required>
-            </div>
-            <div class="text-xs text-muted mt-1">Dibuat otomatis dari singkatan kota (misal: Palembang &rarr; <code>PLM-01</code>). Tetap dapat diedit manual.</div>
-          </div>
-
-          <div class="form-group mb-3">
             <label for="city" class="form-label font-semibold">Kota / Wilayah Pabrik</label>
-            <input type="text" name="city" id="city" class="form-input" placeholder="Contoh: Palembang, Bandung, Medan">
-            <div class="text-xs text-muted mt-1">Singkatan kota akan otomatis menentukan awalan kode cabang.</div>
+            <input type="text" name="city" id="city" class="form-input" placeholder="Contoh: Palembang, Bandung, Medan" required>
+            <div class="text-xs text-muted mt-1">Sistem otomatis membuat kode cabang dari singkatan kota ini.</div>
           </div>
 
           <div class="form-group mb-3">
             <label for="name" class="form-label font-semibold">Nama Pabrik / Cabang</label>
             <input type="text" name="name" id="name" class="form-input" placeholder="Contoh: CPI Food Palembang" required>
+          </div>
+
+          <div class="form-group mb-3 p-3 rounded-lg border border-slate-200 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-700">
+            <div class="text-xs text-muted font-medium mb-1">Kode Cabang Otomatis (Auto-Generated):</div>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-branch text-sm font-mono font-bold" id="previewCodeBadge">-</span>
+              <span class="text-xs text-slate-500" id="previewCodeNote">Akan di-generate otomatis saat disimpan</span>
+            </div>
           </div>
 
           <div class="form-group mb-4">
@@ -187,26 +184,23 @@
 
   const cityInput = document.getElementById('city');
   const nameInput = document.getElementById('name');
-  const codeInput = document.getElementById('code');
-  let userEditedCode = false;
-
-  codeInput.addEventListener('input', function() {
-    userEditedCode = !!this.value.trim();
-  });
+  const previewBadge = document.getElementById('previewCodeBadge');
+  const previewNote = document.getElementById('previewCodeNote');
 
   let debounceTimer;
   function updateAutoCode() {
-    if (userEditedCode) return;
-    const city = cityInput.value.trim();
-    const name = nameInput.value.trim();
+    const city = (cityInput ? cityInput.value : '').trim();
+    const name = (nameInput ? nameInput.value : '').trim();
     if (!city && !name) {
-      codeInput.value = '';
+      if (previewBadge) previewBadge.textContent = '-';
+      if (previewNote) previewNote.textContent = 'Akan di-generate otomatis saat disimpan';
       return;
     }
 
     // Instant local preview
     const abbr = quickCityAbbr(city || name.replace(/^CPI\s+(Food\s+)?/i, ''));
-    codeInput.value = `${abbr}-01`;
+    if (previewBadge) previewBadge.textContent = `${abbr}-01`;
+    if (previewNote) previewNote.textContent = `Singkatan kota: ${abbr}`;
 
     // Fetch server for exact collision-free sequence number
     clearTimeout(debounceTimer);
@@ -214,8 +208,8 @@
       try {
         const res = await fetch(`/admin/branches/generate-code?city=${encodeURIComponent(city)}&name=${encodeURIComponent(name)}`);
         const data = await res.json();
-        if (data.success && data.code && !userEditedCode) {
-          codeInput.value = data.code;
+        if (data.success && data.code && previewBadge) {
+          previewBadge.textContent = data.code;
         }
       } catch (err) {
         console.warn('Auto code fetch fallback error:', err);
@@ -223,12 +217,14 @@
     }, 250);
   }
 
-  cityInput.addEventListener('input', updateAutoCode);
-  nameInput.addEventListener('input', function() {
-    if (!cityInput.value.trim()) {
-      updateAutoCode();
-    }
-  });
+  if (cityInput) cityInput.addEventListener('input', updateAutoCode);
+  if (nameInput) {
+    nameInput.addEventListener('input', function() {
+      if (!cityInput || !cityInput.value.trim()) {
+        updateAutoCode();
+      }
+    });
+  }
 
   async function regenerateEditCode() {
     const city = document.getElementById('edit_city').value.trim();
