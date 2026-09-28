@@ -151,6 +151,25 @@ test('Upload, Preview & Atomic Batch Commit Test', async (t) => {
     if (fs.existsSync(invalidQueueFile)) fs.unlinkSync(invalidQueueFile);
   });
 
+  await t.test('server /health endpoint returns 200 OK status', async () => {
+    const app = require('../server');
+    await new Promise((resolve, reject) => {
+      const server = app.listen(0, async () => {
+        const port = server.address().port;
+        try {
+          const res = await fetch(`http://127.0.0.1:${port}/health`);
+          assert.equal(res.status, 200);
+          const body = await res.json();
+          assert.equal(body.status, 'ok');
+          assert.ok(typeof body.uptime === 'number');
+          server.close(resolve);
+        } catch (err) {
+          server.close(() => reject(err));
+        }
+      });
+    });
+  });
+
   // Cleanup
   if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
 });

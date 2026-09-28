@@ -42,6 +42,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health Check endpoint for Docker & CI/CD (must be before route middlewares)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/', authRoutes);
 app.use('/', dashboardRoutes);

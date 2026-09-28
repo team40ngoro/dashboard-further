@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cp_further_dashboard_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=cp_user
+      - DB_PASSWORD=cp_secret_password_2026
+      - DB_NAME=lpp_food_division
+      - SESSION_SECRET=cp_food_lpp_session_secret_key_production
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: cp_further_dashboard_db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: cp_root_password_2026
+      MYSQL_DATABASE: lpp_food_division
+      MYSQL_USER: cp_user
+      MYSQL_PASSWORD: cp_secret_password_2026
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcp_root_password_2026"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  db_data:

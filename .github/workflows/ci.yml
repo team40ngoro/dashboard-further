@@ -1,0 +1,69 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'feat/**'
+      - 'fix/**'
+      - 'bulk/**'
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  test:
+    name: Test & Validate (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password_ci
+          MYSQL_DATABASE: lpp_food_division_test
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h localhost -u root -proot_password_ci" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Schema Migrations
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_NAME: lpp_food_division_test
+        run: npm run migrate
+
+      - name: Run Automated Test Suite
+        env:
+          NODE_ENV: test
+          DB_DRIVER: mock
+        run: npm test
+
+      - name: Verify Demo Batch Seeding Script
+        env:
+          NODE_ENV: test
+          DB_DRIVER: mock
+        run: npm run seed

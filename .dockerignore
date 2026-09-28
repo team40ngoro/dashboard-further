@@ -1,0 +1,14 @@
+node_modules/
+npm-debug.log
+.git/
+.gitignore
+.env
+.DS_Store
+temp_uploads/
+*.log
+.superpowers/
+docs/
+.github/
+LPP*.xlsx
+LPP*.pdf
+sample*.xlsx
