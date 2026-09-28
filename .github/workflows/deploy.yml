@@ -53,18 +53,29 @@ jobs:
         run: |
           echo "🚀 [CI/CD] Mulai proses deployment otomatis di server internal 10.68.8.219..."
           
-          DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '/var/www/html/opt' }}"
+          # 1. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
+          RAW_PATH="${{ secrets.DEPLOY_PATH || '/var/www/html/opt' }}"
+          DEPLOY_DIR=$(echo "$RAW_PATH" | sed -e 's/^cd //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           
+          echo "📁 Target direktori deployment: $DEPLOY_DIR"
+          
+          # 2. Buat direktori jika belum ada
           if [ ! -d "$DEPLOY_DIR" ]; then
-            echo "❌ Error: Direktori $DEPLOY_DIR tidak ditemukan di server!"
-            exit 1
+            echo "📁 Direktori $DEPLOY_DIR belum ada di server, membuat direktori..."
+            mkdir -p "$DEPLOY_DIR" || sudo mkdir -p "$DEPLOY_DIR"
           fi
 
           cd "$DEPLOY_DIR"
           
-          echo "📥 1. Menarik pembaruan kode terbaru dari branch main..."
-          git fetch origin main
-          git reset --hard origin/main
+          # 3. Clone repository jika belum ter-clone, atau fetch update jika sudah ada
+          if [ ! -d ".git" ]; then
+            echo "📥 1. Direktori belum memiliki repo Git, mengkloning repository..."
+            git clone https://github.com/team40ngoro/dashboard-further.git .
+          else
+            echo "📥 1. Menarik pembaruan kode terbaru dari branch main..."
+            git fetch origin main
+            git reset --hard origin/main
+          fi
           
           echo "📦 2. Menginstal dependensi produksi..."
           npm ci --omit=dev
