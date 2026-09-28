@@ -175,14 +175,69 @@ async function listUsers() {
   `);
 }
 
+async function getUserById(id) {
+  const rows = await query(`
+    SELECT u.id, u.branch_id, u.username, u.password_hash, u.full_name, u.role, u.is_active, u.created_at,
+           b.name AS branch_name, b.code AS branch_code
+    FROM users u
+    LEFT JOIN branches b ON u.branch_id = b.id
+    WHERE u.id = ?
+  `, [Number(id)]);
+  return rows[0] || null;
+}
+
 async function createUser({ username, password, fullName, role, branchId = null }) {
   const passwordHash = await hashPassword(password);
-  const branchVal = branchId ? Number(branchId) : null;
+  const branchVal = (role === ROLES.ADMIN_PUSAT || role === ROLES.ANALIS_PUSAT) ? null : (branchId ? Number(branchId) : null);
   const res = await query(
     'INSERT INTO users (branch_id, username, password_hash, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?)',
     [branchVal, username.trim(), passwordHash, fullName.trim(), role, 1]
   );
   return res;
+}
+
+async function updateUser(id, { username, fullName, role, branchId = null, password, isActive = 1 }) {
+  const userId = Number(id);
+  const existing = await getUserById(userId);
+  if (!existing) {
+    throw new Error('Pengguna tidak ditemukan.');
+  }
+
+  const newUsername = username ? username.trim() : existing.username;
+  const newFullName = fullName ? fullName.trim() : existing.full_name;
+  const newRole = role || existing.role;
+  const newBranchId = (newRole === ROLES.ADMIN_PUSAT || newRole === ROLES.ANALIS_PUSAT) ? null : (branchId ? Number(branchId) : null);
+  const activeStatus = isActive !== undefined ? Number(isActive) : existing.is_active;
+
+  if (password && password.trim().length > 0) {
+    const passwordHash = await hashPassword(password.trim());
+    await query(
+      'UPDATE users SET branch_id = ?, username = ?, password_hash = ?, full_name = ?, role = ?, is_active = ? WHERE id = ?',
+      [newBranchId, newUsername, passwordHash, newFullName, newRole, activeStatus, userId]
+    );
+  } else {
+    await query(
+      'UPDATE users SET branch_id = ?, username = ?, full_name = ?, role = ?, is_active = ? WHERE id = ?',
+      [newBranchId, newUsername, newFullName, newRole, activeStatus, userId]
+    );
+  }
+
+  return { id: userId, username: newUsername, full_name: newFullName, role: newRole, branch_id: newBranchId, is_active: activeStatus };
+}
+
+async function deleteUser(id, currentUserId) {
+  const userId = Number(id);
+  if (currentUserId && Number(currentUserId) === userId) {
+    throw new Error('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.');
+  }
+
+  const existing = await getUserById(userId);
+  if (!existing) {
+    throw new Error('Pengguna tidak ditemukan.');
+  }
+
+  await query('DELETE FROM users WHERE id = ?', [userId]);
+  return { success: true, message: `Pengguna "${existing.username}" (${existing.full_name}) berhasil dihapus.` };
 }
 
 const adminController = {
@@ -192,7 +247,10 @@ const adminController = {
   updateBranch,
   deleteBranch,
   listUsers,
+  getUserById,
   createUser,
+  updateUser,
+  deleteUser,
   getCityAbbreviation,
   generateNextBranchCode,
 
@@ -319,6 +377,58 @@ const adminController = {
     } catch (err) {
       console.error('Create user error:', err);
       req.session.errorMessage = `Gagal membuat pengguna: ${err.message}`;
+      res.redirect('/admin/users');
+    }
+  },
+
+  handleUpdateUser: async (req, res) => {
+    const { id } = req.params;
+    const { username, password, fullName, role, branchId, isActive } = req.body;
+
+    if (!username || !fullName || !role) {
+      req.session.errorMessage = 'Username, Nama Lengkap, dan Peran wajib diisi.';
+      return res.redirect('/admin/users');
+    }
+
+    try {
+      await updateUser(id, {
+        username,
+        password,
+        fullName,
+        role,
+        branchId: branchId || null,
+        isActive: isActive !== undefined ? Number(isActive) : 1
+      });
+      req.session.successMessage = `Pengguna ${username} (${fullName}) berhasil diperbarui.`;
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.json({ success: true, message: req.session.successMessage });
+      }
+      res.redirect('/admin/users');
+    } catch (err) {
+      console.error('Update user error:', err);
+      req.session.errorMessage = `Gagal memperbarui pengguna: ${err.message}`;
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      res.redirect('/admin/users');
+    }
+  },
+
+  handleDeleteUser: async (req, res) => {
+    const { id } = req.params;
+    try {
+      const result = await deleteUser(id, req.session.user ? req.session.user.id : null);
+      req.session.successMessage = result.message;
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.json({ success: true, message: result.message });
+      }
+      res.redirect('/admin/users');
+    } catch (err) {
+      console.error('Delete user error:', err);
+      req.session.errorMessage = err.message;
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       res.redirect('/admin/users');
     }
   }

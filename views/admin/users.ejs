@@ -86,6 +86,8 @@
                 <th>Nama Lengkap</th>
                 <th>Peran</th>
                 <th>Cabang</th>
+                <th>Status</th>
+                <th class="text-center" style="width: 140px;">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -93,8 +95,37 @@
                 <tr>
                   <td class="font-bold"><code><%= u.username %></code></td>
                   <td><%= u.full_name %></td>
-                  <td><span class="badge badge-stage"><%= u.role.replace('_', ' ') %></span></td>
-                  <td><%= u.branch_name ? u.branch_name : 'Kantor Pusat' %></td>
+                  <td><span class="badge badge-stage"><%= roleLabels[u.role] || u.role.replace('_', ' ') %></span></td>
+                  <td>
+                    <% if (u.branch_name) { %>
+                      <span class="badge badge-branch"><%= u.branch_code %></span> <%= u.branch_name %>
+                    <% } else { %>
+                      <span class="text-muted font-medium">🏢 Kantor Pusat</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (u.is_active) { %>
+                      <span class="badge badge-status-good">Aktif</span>
+                    <% } else { %>
+                      <span class="badge badge-status-high">Nonaktif</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="table-actions-cell justify-center">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(<%= u.id %>, '<%= u.username.replace(/'/g, "\\'") %>', '<%= u.full_name.replace(/'/g, "\\'") %>', '<%= u.role %>', '<%= u.branch_id || '' %>', <%= u.is_active ? 1 : 0 %>)" title="Edit Pengguna">
+                        Edit
+                      </button>
+                      <% if (user && user.id === u.id) { %>
+                        <button type="button" class="btn btn-sm btn-outline-secondary opacity-50 cursor-not-allowed" disabled title="Akun Anda Sendiri">
+                          Anda
+                        </button>
+                      <% } else { %>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDeleteUser(<%= u.id %>, '<%= u.username.replace(/'/g, "\\'") %>', '<%= u.full_name.replace(/'/g, "\\'") %>')" title="Hapus Pengguna">
+                          Hapus
+                        </button>
+                      <% } %>
+                    </div>
+                  </td>
                 </tr>
               <% }) %>
             </tbody>
@@ -104,5 +135,139 @@
     </div>
   </div>
 </main>
+
+<!-- Hidden Form for Delete -->
+<form id="deleteUserForm" method="POST" style="display: none;"></form>
+
+<!-- Modal Edit Pengguna -->
+<div class="modal-backdrop" id="editUserModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Data Pengguna</h3>
+      <button type="button" class="modal-close-btn" onclick="closeEditUserModal()">&times;</button>
+    </div>
+    <form id="editUserForm" method="POST">
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label for="edit_username" class="form-label font-semibold">Nama Pengguna (Username)</label>
+          <input type="text" name="username" id="edit_username" class="form-input" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="edit_fullName" class="form-label font-semibold">Nama Lengkap</label>
+          <input type="text" name="fullName" id="edit_fullName" class="form-input" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="edit_password" class="form-label font-semibold">Kata Sandi Baru</label>
+          <input type="password" name="password" id="edit_password" class="form-input" placeholder="Kosongkan jika tidak ingin mengubah password">
+          <div class="text-xs text-muted mt-1">Biarkan kosong bila kata sandi tetap sama.</div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="edit_role" class="form-label font-semibold">Peran dan Hak Akses</label>
+          <select name="role" id="edit_role" class="form-select" required onchange="handleRoleChange('edit_role', 'edit_branch-group')">
+            <option value="<%= roles.PENGUNGGAH_CABANG %>"><%= roleLabels.pengunggah_cabang %></option>
+            <option value="<%= roles.PEMBACA_CABANG %>"><%= roleLabels.pembaca_cabang %></option>
+            <option value="<%= roles.ANALIS_PUSAT %>"><%= roleLabels.analis_pusat %></option>
+            <option value="<%= roles.ADMIN_PUSAT %>"><%= roleLabels.admin_pusat %></option>
+          </select>
+        </div>
+
+        <div class="form-group mb-3" id="edit_branch-group">
+          <label for="edit_branchId" class="form-label font-semibold">Cabang Penugasan</label>
+          <select name="branchId" id="edit_branchId" class="form-select">
+            <option value="">Tidak Ada (Kantor Pusat)</option>
+            <% branches.forEach(b => { %>
+              <option value="<%= b.id %>"><%= b.code %> - <%= b.name %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group mb-2">
+          <label for="edit_isActive" class="form-label font-semibold">Status Akun</label>
+          <select name="isActive" id="edit_isActive" class="form-select">
+            <option value="1">Aktif (Dapat Login)</option>
+            <option value="0">Nonaktif (Diblokir)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeEditUserModal()">Batal</button>
+        <button type="submit" class="btn btn-primary btn-sm">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function handleRoleChange(roleSelectId, branchGroupId) {
+    const roleVal = document.getElementById(roleSelectId).value;
+    const branchGroup = document.getElementById(branchGroupId);
+    const branchSelect = branchGroup.querySelector('select');
+    if (roleVal === '<%= roles.ADMIN_PUSAT %>' || roleVal === '<%= roles.ANALIS_PUSAT %>') {
+      branchSelect.value = '';
+      branchGroup.style.opacity = '0.5';
+    } else {
+      branchGroup.style.opacity = '1';
+    }
+  }
+
+  document.getElementById('role').addEventListener('change', function() {
+    handleRoleChange('role', 'branch-select-group');
+  });
+
+  function openEditUserModal(id, username, fullName, role, branchId, isActive) {
+    const modal = document.getElementById('editUserModal');
+    const form = document.getElementById('editUserForm');
+    form.action = `/admin/users/${id}/update`;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_fullName').value = fullName;
+    document.getElementById('edit_password').value = '';
+    document.getElementById('edit_role').value = role;
+    document.getElementById('edit_branchId').value = branchId || '';
+    document.getElementById('edit_isActive').value = isActive ? '1' : '0';
+    handleRoleChange('edit_role', 'edit_branch-group');
+    modal.classList.add('active');
+  }
+
+  function closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    modal.classList.remove('active');
+  }
+
+  document.getElementById('editUserModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeEditUserModal();
+    }
+  });
+
+  async function confirmDeleteUser(id, username, fullName) {
+    if (typeof Swal !== 'undefined') {
+      const result = await Swal.fire({
+        title: 'Hapus Pengguna?',
+        html: `Apakah Anda yakin ingin menghapus akun pengguna <strong>${username}</strong> (${fullName})?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Akun',
+        cancelButtonText: 'Batal'
+      });
+
+      if (result.isConfirmed) {
+        const form = document.getElementById('deleteUserForm');
+        form.action = `/admin/users/${id}/delete`;
+        form.submit();
+      }
+    } else {
+      if (confirm(`Apakah Anda yakin ingin menghapus akun pengguna "${username}" (${fullName})?`)) {
+        const form = document.getElementById('deleteUserForm');
+        form.action = `/admin/users/${id}/delete`;
+        form.submit();
+      }
+    }
+  }
+</script>
 
 <%- include('../layouts/footer') %>

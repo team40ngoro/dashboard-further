@@ -195,6 +195,43 @@ function runMockQuery(sql, params = []) {
     return { insertId: newId, affectedRows: 1 };
   }
 
+  // UPDATE users
+  if (upper.startsWith('UPDATE USERS')) {
+    const id = params[params.length - 1];
+    const user = mockStorage.users.find(u => u.id === Number(id));
+    if (user) {
+      if (upper.includes('PASSWORD_HASH =')) {
+        const [branch_id, username, password_hash, full_name, role, is_active] = params;
+        user.branch_id = branch_id ? Number(branch_id) : null;
+        if (username) user.username = username;
+        if (password_hash) user.password_hash = password_hash;
+        if (full_name) user.full_name = full_name;
+        if (role) user.role = role;
+        if (is_active !== undefined) user.is_active = Number(is_active);
+      } else {
+        const [branch_id, username, full_name, role, is_active] = params;
+        user.branch_id = branch_id ? Number(branch_id) : null;
+        if (username) user.username = username;
+        if (full_name) user.full_name = full_name;
+        if (role) user.role = role;
+        if (is_active !== undefined) user.is_active = Number(is_active);
+      }
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+
+  // DELETE FROM users
+  if (upper.startsWith('DELETE FROM USERS')) {
+    const id = params[0];
+    const idx = mockStorage.users.findIndex(u => u.id === Number(id));
+    if (idx !== -1) {
+      mockStorage.users.splice(idx, 1);
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+
   // INSERT INTO branches
   if (upper.startsWith('INSERT INTO BRANCHES')) {
     const newId = mockStorage.branches.length > 0 ? Math.max(...mockStorage.branches.map(b => b.id)) + 1 : 1;

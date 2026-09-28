@@ -2,7 +2,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('Branch & User Admin Management Test', async (t) => {
-  const { createBranch, updateBranch, deleteBranch, getBranchById, createUser, listBranches, listUsers, getCityAbbreviation, generateNextBranchCode } = require('../controllers/adminController');
+  const {
+    createBranch,
+    updateBranch,
+    deleteBranch,
+    getBranchById,
+    createUser,
+    updateUser,
+    deleteUser,
+    getUserById,
+    listBranches,
+    listUsers,
+    getCityAbbreviation,
+    generateNextBranchCode
+  } = require('../controllers/adminController');
   const { saveBatchTransaction } = require('../controllers/uploadController');
 
   let testBranchId = null;
@@ -100,6 +113,8 @@ test('Branch & User Admin Management Test', async (t) => {
     mockStorage.production_batches = mockStorage.production_batches.filter(b => b.id !== 9999);
   });
 
+  let testUserId = null;
+
   await t.test('create and list user accounts with hashed password', async () => {
     const newUser = await createUser({
       username: 'uploader.bandung',
@@ -109,10 +124,51 @@ test('Branch & User Admin Management Test', async (t) => {
       branchId: 1
     });
     assert.ok(newUser.insertId > 0);
+    testUserId = newUser.insertId;
 
     const users = await listUsers();
     const createdUser = users.find(u => u.username === 'uploader.bandung');
     assert.ok(createdUser, 'Created user should be listed');
     assert.notEqual(createdUser.password_hash, 'password123', 'Password must be hashed');
+  });
+
+  await t.test('update user profile, role, password, and active status', async () => {
+    assert.ok(testUserId);
+    const updated = await updateUser(testUserId, {
+      username: 'uploader.bandung.v2',
+      fullName: 'Operator Senior Bandung',
+      role: 'pembaca_cabang',
+      branchId: 1,
+      password: 'newpassword456',
+      isActive: 0
+    });
+
+    assert.equal(updated.username, 'uploader.bandung.v2');
+    assert.equal(updated.full_name, 'Operator Senior Bandung');
+    assert.equal(updated.role, 'pembaca_cabang');
+    assert.equal(updated.is_active, 0);
+
+    const userInDb = await getUserById(testUserId);
+    assert.equal(userInDb.username, 'uploader.bandung.v2');
+    assert.equal(userInDb.full_name, 'Operator Senior Bandung');
+    assert.equal(userInDb.is_active, 0);
+  });
+
+  await t.test('prevent user self-deletion and allow normal deletion', async () => {
+    assert.ok(testUserId);
+    // Prevent self-deletion
+    await assert.rejects(
+      async () => {
+        await deleteUser(testUserId, testUserId);
+      },
+      /tidak dapat menghapus akun Anda sendiri/
+    );
+
+    // Normal deletion by another admin
+    const deleteResult = await deleteUser(testUserId, 9999);
+    assert.equal(deleteResult.success, true);
+
+    const deletedUser = await getUserById(testUserId);
+    assert.equal(deletedUser, null, 'User should be removed from DB');
   });
 });

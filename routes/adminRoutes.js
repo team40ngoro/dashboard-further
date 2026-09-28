@@ -15,5 +15,7 @@ router.post('/admin/branches/:id/delete', adminController.handleDeleteBranch);
 
 router.get('/admin/users', adminController.renderUsers);
 router.post('/admin/users', adminController.handleCreateUser);
+router.post('/admin/users/:id/update', adminController.handleUpdateUser);
+router.post('/admin/users/:id/delete', adminController.handleDeleteUser);
 
 module.exports = router;
