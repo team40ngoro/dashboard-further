@@ -1,0 +1,103 @@
+name: CI/CD Pipeline to Production (PM2 & SSH)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  # ==========================================
+  # 1. CI STEP: Test & Validate Code
+  # ==========================================
+  test:
+    name: Run Tests & Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Schema Migrations Check
+        env:
+          NODE_ENV: test
+          DB_DRIVER: mock
+        run: npm run migrate
+
+      - name: Run Automated Test Suite
+        env:
+          NODE_ENV: test
+          DB_DRIVER: mock
+        run: npm test
+
+  # ==========================================
+  # 2. CD STEP: Deploy Directly to Production
+  # ==========================================
+  deploy-production:
+    name: Deploy to Production Server via SSH
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to VPS Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "🚀 [CI/CD] Mulai proses deployment otomatis di server produksi..."
+            
+            # Tentukan direktori aplikasi di server
+            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '/var/www/further-dashboard' }}"
+            
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              echo "❌ Error: Direktori $DEPLOY_DIR tidak ditemukan di server!"
+              exit 1
+            fi
+
+            cd "$DEPLOY_DIR"
+            
+            echo "📥 1. Menarik pembaruan kode terbaru dari branch main..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            echo "📦 2. Menginstal dependensi produksi..."
+            npm ci --omit=dev
+            
+            echo "🔄 3. Menjalankan migrasi skema database..."
+            npm run migrate
+            
+            echo "⚡ 4. Memuat ulang proses aplikasi dengan PM2..."
+            if pm2 describe further-dashboard > /dev/null 2>&1; then
+              pm2 reload further-dashboard --update-env
+            else
+              pm2 start ecosystem.config.js --env production || pm2 start server.js --name "further-dashboard"
+            fi
+            
+            echo "💾 5. Menyimpan konfigurasi PM2..."
+            pm2 save
+            
+            echo "🔍 6. Memeriksa status kesehatan server (Healthcheck)..."
+            sleep 3
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/health || echo "000")
+            
+            if [ "$HEALTH_STATUS" = "200" ]; then
+              echo "✅ Healthcheck sukses (Status 200 OK)."
+              echo "🎉 DEPLOYMENT BERHASIL! Aplikasi aktif dan siap melayani trafik."
+            else
+              echo "⚠️ Peringatan: Healthcheck mengembalikan status $HEALTH_STATUS."
+            fi
