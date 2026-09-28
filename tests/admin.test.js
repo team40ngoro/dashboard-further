@@ -2,10 +2,39 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('Branch & User Admin Management Test', async (t) => {
-  const { createBranch, updateBranch, deleteBranch, getBranchById, createUser, listBranches, listUsers } = require('../controllers/adminController');
+  const { createBranch, updateBranch, deleteBranch, getBranchById, createUser, listBranches, listUsers, getCityAbbreviation, generateNextBranchCode } = require('../controllers/adminController');
   const { saveBatchTransaction } = require('../controllers/uploadController');
 
   let testBranchId = null;
+
+  await t.test('city abbreviation and automatic branch code generation', async () => {
+    assert.equal(getCityAbbreviation('Palembang'), 'PLM');
+    assert.equal(getCityAbbreviation('Semarang'), 'SMG');
+    assert.equal(getCityAbbreviation('Kota Surabaya'), 'SBY');
+    assert.equal(getCityAbbreviation('Denpasar'), 'DPS');
+    assert.equal(getCityAbbreviation('Makassar'), 'MKS');
+    assert.equal(getCityAbbreviation('Jayapura'), 'JPR');
+
+    const autoCode = await generateNextBranchCode('Palembang', 'CPI Food Palembang');
+    assert.equal(autoCode, 'PLM-01');
+
+    // Create branch without specifying code -> auto generated
+    const created = await createBranch({
+      name: 'CPI Food Palembang',
+      city: 'Palembang',
+      accessCode: '1234'
+    });
+    assert.ok(created.insertId > 0);
+
+    const branches = await listBranches();
+    const plm = branches.find(b => b.name === 'CPI Food Palembang');
+    assert.ok(plm);
+    assert.equal(plm.code, 'PLM-01');
+
+    // Next Palembang branch should auto-increment to PLM-02
+    const nextPlm = await generateNextBranchCode('Palembang');
+    assert.equal(nextPlm, 'PLM-02');
+  });
 
   await t.test('create and list branches', async () => {
     const newBranch = await createBranch({

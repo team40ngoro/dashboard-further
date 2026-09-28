@@ -8,6 +8,7 @@ const { ROLES } = require('../config/constants');
 router.use(requireAuth, requireRole([ROLES.ADMIN_PUSAT]));
 
 router.get('/admin/branches', adminController.renderBranches);
+router.get('/admin/branches/generate-code', adminController.handleGenerateBranchCode);
 router.post('/admin/branches', adminController.handleCreateBranch);
 router.post('/admin/branches/:id/update', adminController.handleUpdateBranch);
 router.post('/admin/branches/:id/delete', adminController.handleDeleteBranch);

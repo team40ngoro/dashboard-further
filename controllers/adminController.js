@@ -2,6 +2,107 @@ const { query } = require('../config/database');
 const { hashPassword } = require('./authController');
 const { ROLES, ROLE_LABELS } = require('../config/constants');
 
+const CITY_ABBREVIATIONS = {
+  cikande: 'CKD',
+  serang: 'SRG',
+  semarang: 'SMG',
+  surabaya: 'SBY',
+  medan: 'MDN',
+  jakarta: 'JKT',
+  bandung: 'BDG',
+  palembang: 'PLM',
+  denpasar: 'DPS',
+  makassar: 'MKS',
+  yogyakarta: 'YOG',
+  jogja: 'JOG',
+  malang: 'MLG',
+  solo: 'SLO',
+  surakarta: 'SKA',
+  bogor: 'BGR',
+  tangerang: 'TGR',
+  bekasi: 'BKS',
+  cirebon: 'CRB',
+  lampung: 'LMP',
+  pontianak: 'PTK',
+  banjarmasin: 'BJM',
+  balikpapan: 'BPN',
+  samarinda: 'SMD',
+  manado: 'MND',
+  padang: 'PDG',
+  pekanbaru: 'PKU',
+  batam: 'BTM',
+  jambi: 'JMB',
+  bengkulu: 'BKL',
+  kupang: 'KPG',
+  ambon: 'AMB',
+  jayapura: 'JPR',
+  mataram: 'MTR',
+  tasikmalaya: 'TSM',
+  sidoarjo: 'SDA',
+  sukabumi: 'SKB',
+  salatiga: 'SLT',
+  probolinggo: 'PBG',
+  pasuruan: 'PSR',
+  kediri: 'KDR',
+  madiun: 'MDN',
+  blitar: 'BLT',
+  jember: 'JMB',
+  banyuwangi: 'BWX',
+  tegal: 'TGL',
+  pekalongan: 'PKL',
+  purwokerto: 'PWT',
+  cilacap: 'CLP',
+  kudus: 'KDS',
+  magelang: 'MGL',
+  klaten: 'KLT'
+};
+
+function getCityAbbreviation(cityName) {
+  if (!cityName || typeof cityName !== 'string') return 'CBG';
+  
+  const clean = cityName.trim().toLowerCase().replace(/^(kota|kabupaten|kab\.|kab)\s+/i, '');
+  if (CITY_ABBREVIATIONS[clean]) {
+    return CITY_ABBREVIATIONS[clean];
+  }
+
+  const words = clean.split(/[\s-]+/).filter(Boolean);
+  if (words.length >= 3) {
+    return (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+  }
+  
+  const firstWord = words[0] || clean;
+  const letters = firstWord.toUpperCase().replace(/[^A-Z]/g, '');
+  if (letters.length <= 3) return letters.padEnd(3, 'X');
+  
+  const firstChar = letters[0];
+  const restChars = letters.slice(1);
+  const consonants = restChars.replace(/[AEIOU]/g, '');
+  
+  if (consonants.length >= 2) {
+    return (firstChar + consonants.slice(0, 2)).toUpperCase();
+  } else {
+    return letters.slice(0, 3).toUpperCase();
+  }
+}
+
+async function generateNextBranchCode(cityName, plantName) {
+  const target = (cityName && cityName.trim()) || (plantName && plantName.trim().replace(/^CPI\s+(Food\s+)?/i, '')) || 'Cabang';
+  const abbr = getCityAbbreviation(target);
+  const branches = await listBranches();
+  
+  const prefix = `${abbr}-`;
+  const existingNumbers = branches
+    .filter(b => b.code && b.code.toUpperCase().startsWith(prefix))
+    .map(b => {
+      const numPart = parseInt(b.code.replace(new RegExp(`^${prefix}`, 'i'), ''), 10);
+      return isNaN(numPart) ? 0 : numPart;
+    });
+  
+  const nextNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+  const padded = String(nextNum).padStart(2, '0');
+  return `${abbr}-${padded}`;
+}
+
 async function listBranches() {
   return await query('SELECT * FROM branches ORDER BY id ASC');
 }
@@ -12,9 +113,13 @@ async function getBranchById(id) {
 }
 
 async function createBranch({ code, name, city, accessCode = '1234' }) {
+  let finalCode = code ? code.trim().toUpperCase() : '';
+  if (!finalCode) {
+    finalCode = await generateNextBranchCode(city, name);
+  }
   const res = await query(
     'INSERT INTO branches (code, name, city, access_code) VALUES (?, ?, ?, ?)',
-    [code.trim().toUpperCase(), name.trim(), city ? city.trim() : null, (accessCode || '1234').trim()]
+    [finalCode, name.trim(), city ? city.trim() : null, (accessCode || '1234').trim()]
   );
   return res;
 }
@@ -88,6 +193,18 @@ const adminController = {
   deleteBranch,
   listUsers,
   createUser,
+  getCityAbbreviation,
+  generateNextBranchCode,
+
+  handleGenerateBranchCode: async (req, res) => {
+    try {
+      const { city, name } = req.query;
+      const code = await generateNextBranchCode(city, name);
+      res.json({ success: true, code });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  },
 
   renderBranches: async (req, res) => {
     const branches = await listBranches();
@@ -103,15 +220,18 @@ const adminController = {
   },
 
   handleCreateBranch: async (req, res) => {
-    const { code, name, city, accessCode } = req.body;
-    if (!code || !name) {
-      req.session.errorMessage = 'Kode dan Nama cabang wajib diisi.';
+    let { code, name, city, accessCode } = req.body;
+    if (!name || !name.trim()) {
+      req.session.errorMessage = 'Nama cabang wajib diisi.';
       return res.redirect('/admin/branches');
     }
 
     try {
+      if (!code || !code.trim()) {
+        code = await generateNextBranchCode(city, name);
+      }
       await createBranch({ code, name, city, accessCode: accessCode || '1234' });
-      req.session.successMessage = `Cabang ${name} (${code}) dengan PIN ${accessCode || '1234'} berhasil ditambahkan.`;
+      req.session.successMessage = `Cabang ${name} (${code.toUpperCase()}) dengan PIN ${accessCode || '1234'} berhasil ditambahkan.`;
       res.redirect('/admin/branches');
     } catch (err) {
       console.error('Create branch error:', err);

@@ -28,20 +28,27 @@
         <h3 class="card-title">Tambah Cabang Baru</h3>
       </div>
       <div class="card-body">
-        <form action="/admin/branches" method="POST">
+        <form action="/admin/branches" method="POST" id="createBranchForm">
           <div class="form-group mb-3">
-            <label for="code" class="form-label font-semibold">Kode Cabang</label>
-            <input type="text" name="code" id="code" class="form-input" placeholder="Contoh: PLM-01" required>
+            <div class="flex items-center justify-between mb-1">
+              <label for="code" class="form-label font-semibold mb-0">Kode Cabang</label>
+              <span class="text-xs text-primary font-medium" id="codeAutoBadge">✨ Otomatis dari Kota</span>
+            </div>
+            <div class="relative">
+              <input type="text" name="code" id="code" class="form-input uppercase font-mono font-bold tracking-wider" placeholder="Otomatis terisi (Contoh: PLM-01)" required>
+            </div>
+            <div class="text-xs text-muted mt-1">Dibuat otomatis dari singkatan kota (misal: Palembang &rarr; <code>PLM-01</code>). Tetap dapat diedit manual.</div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="city" class="form-label font-semibold">Kota / Wilayah Pabrik</label>
+            <input type="text" name="city" id="city" class="form-input" placeholder="Contoh: Palembang, Bandung, Medan">
+            <div class="text-xs text-muted mt-1">Singkatan kota akan otomatis menentukan awalan kode cabang.</div>
           </div>
 
           <div class="form-group mb-3">
             <label for="name" class="form-label font-semibold">Nama Pabrik / Cabang</label>
             <input type="text" name="name" id="name" class="form-input" placeholder="Contoh: CPI Food Palembang" required>
-          </div>
-
-          <div class="form-group mb-3">
-            <label for="city" class="form-label font-semibold">Kota / Wilayah</label>
-            <input type="text" name="city" id="city" class="form-input" placeholder="Contoh: Palembang">
           </div>
 
           <div class="form-group mb-4">
@@ -119,18 +126,21 @@
     <form id="editBranchForm" method="POST">
       <div class="modal-body">
         <div class="form-group mb-3">
-          <label for="edit_code" class="form-label font-semibold">Kode Cabang</label>
-          <input type="text" name="code" id="edit_code" class="form-input" required>
-        </div>
-
-        <div class="form-group mb-3">
-          <label for="edit_name" class="form-label font-semibold">Nama Pabrik / Cabang</label>
-          <input type="text" name="name" id="edit_name" class="form-input" required>
+          <div class="flex items-center justify-between mb-1">
+            <label for="edit_code" class="form-label font-semibold mb-0">Kode Cabang</label>
+            <button type="button" class="text-xs text-primary font-medium hover:underline border-0 bg-transparent cursor-pointer" onclick="regenerateEditCode()">⚡ Auto-Generate dari Kota</button>
+          </div>
+          <input type="text" name="code" id="edit_code" class="form-input uppercase font-mono font-bold" required>
         </div>
 
         <div class="form-group mb-3">
           <label for="edit_city" class="form-label font-semibold">Kota / Wilayah</label>
           <input type="text" name="city" id="edit_city" class="form-input">
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="edit_name" class="form-label font-semibold">Nama Pabrik / Cabang</label>
+          <input type="text" name="name" id="edit_name" class="form-input" required>
         </div>
 
         <div class="form-group mb-2">
@@ -148,6 +158,93 @@
 </div>
 
 <script>
+  const CITY_ABBR_MAP = {
+    cikande: 'CKD', serang: 'SRG', semarang: 'SMG', surabaya: 'SBY', medan: 'MDN',
+    jakarta: 'JKT', bandung: 'BDG', palembang: 'PLM', denpasar: 'DPS', makassar: 'MKS',
+    yogyakarta: 'YOG', jogja: 'JOG', malang: 'MLG', solo: 'SLO', surakarta: 'SKA',
+    bogor: 'BGR', tangerang: 'TGR', bekasi: 'BKS', cirebon: 'CRB', lampung: 'LMP',
+    pontianak: 'PTK', banjarmasin: 'BJM', balikpapan: 'BPN', samarinda: 'SMD', manado: 'MND',
+    padang: 'PDG', pekanbaru: 'PKU', batam: 'BTM', jambi: 'JMB', bengkulu: 'BKL',
+    kupang: 'KPG', ambon: 'AMB', jayapura: 'JPR', mataram: 'MTR', tasikmalaya: 'TSM',
+    sidoarjo: 'SDA', sukabumi: 'SKB', salatiga: 'SLT', probolinggo: 'PBG', pasuruan: 'PSR',
+    kediri: 'KDR', madiun: 'MDN', blitar: 'BLT', jember: 'JMB', banyuwangi: 'BWX',
+    tegal: 'TGL', pekalongan: 'PKL', purwokerto: 'PWT', cilacap: 'CLP', kudus: 'KDS'
+  };
+
+  function quickCityAbbr(cityName) {
+    if (!cityName) return 'CBG';
+    const clean = cityName.trim().toLowerCase().replace(/^(kota|kabupaten|kab\.|kab)\s+/i, '');
+    if (CITY_ABBR_MAP[clean]) return CITY_ABBR_MAP[clean];
+    const words = clean.split(/[\s-]+/).filter(Boolean);
+    if (words.length >= 3) return (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+    const letters = (words[0] || clean).toUpperCase().replace(/[^A-Z]/g, '');
+    if (letters.length <= 3) return letters.padEnd(3, 'X');
+    const first = letters[0];
+    const consonants = letters.slice(1).replace(/[AEIOU]/g, '');
+    if (consonants.length >= 2) return (first + consonants.slice(0, 2)).toUpperCase();
+    return letters.slice(0, 3).toUpperCase();
+  }
+
+  const cityInput = document.getElementById('city');
+  const nameInput = document.getElementById('name');
+  const codeInput = document.getElementById('code');
+  let userEditedCode = false;
+
+  codeInput.addEventListener('input', function() {
+    userEditedCode = !!this.value.trim();
+  });
+
+  let debounceTimer;
+  function updateAutoCode() {
+    if (userEditedCode) return;
+    const city = cityInput.value.trim();
+    const name = nameInput.value.trim();
+    if (!city && !name) {
+      codeInput.value = '';
+      return;
+    }
+
+    // Instant local preview
+    const abbr = quickCityAbbr(city || name.replace(/^CPI\s+(Food\s+)?/i, ''));
+    codeInput.value = `${abbr}-01`;
+
+    // Fetch server for exact collision-free sequence number
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/admin/branches/generate-code?city=${encodeURIComponent(city)}&name=${encodeURIComponent(name)}`);
+        const data = await res.json();
+        if (data.success && data.code && !userEditedCode) {
+          codeInput.value = data.code;
+        }
+      } catch (err) {
+        console.warn('Auto code fetch fallback error:', err);
+      }
+    }, 250);
+  }
+
+  cityInput.addEventListener('input', updateAutoCode);
+  nameInput.addEventListener('input', function() {
+    if (!cityInput.value.trim()) {
+      updateAutoCode();
+    }
+  });
+
+  async function regenerateEditCode() {
+    const city = document.getElementById('edit_city').value.trim();
+    const name = document.getElementById('edit_name').value.trim();
+    const target = city || name.replace(/^CPI\s+(Food\s+)?/i, '');
+    const abbr = quickCityAbbr(target);
+    document.getElementById('edit_code').value = `${abbr}-01`;
+    try {
+      const res = await fetch(`/admin/branches/generate-code?city=${encodeURIComponent(city)}&name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      if (data.success && data.code) {
+        document.getElementById('edit_code').value = data.code;
+      }
+    } catch (e) {}
+  }
+
   function openEditBranchModal(id, code, name, city, accessCode) {
     const modal = document.getElementById('editBranchModal');
     const form = document.getElementById('editBranchForm');
@@ -164,7 +261,6 @@
     modal.classList.remove('active');
   }
 
-  // Close modal when clicking backdrop
   document.getElementById('editBranchModal').addEventListener('click', function(e) {
     if (e.target === this) {
       closeEditBranchModal();
