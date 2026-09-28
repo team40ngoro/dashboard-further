@@ -54,8 +54,13 @@ jobs:
           echo "🚀 [CI/CD] Mulai proses deployment otomatis di server internal 10.68.8.219..."
           
           # 1. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
-          RAW_PATH="${{ secrets.DEPLOY_PATH || '/opt' }}"
+          RAW_PATH="${{ secrets.DEPLOY_PATH || '/opt/further-dashboard' }}"
           DEPLOY_DIR=$(echo "$RAW_PATH" | sed -e 's/^cd //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          
+          # Jika DEPLOY_DIR bernilai '/opt' atau kosong, arahkan ke subfolder khusus aplikasi
+          if [ "$DEPLOY_DIR" = "/opt" ] || [ "$DEPLOY_DIR" = "/opt/" ] || [ -z "$DEPLOY_DIR" ]; then
+            DEPLOY_DIR="/opt/further-dashboard"
+          fi
           
           echo "📁 Target direktori deployment: $DEPLOY_DIR"
           
@@ -67,15 +72,18 @@ jobs:
 
           cd "$DEPLOY_DIR"
           
-          # 3. Clone repository jika belum ter-clone, atau fetch update jika sudah ada
+          # 3. Sinkronisasi repository secara aman (idempotent)
+          echo "📥 1. Mengambil dan menyinkronkan kode terbaru dari repository GitHub..."
           if [ ! -d ".git" ]; then
-            echo "📥 1. Direktori belum memiliki repo Git, mengkloning repository..."
-            git clone https://github.com/team40ngoro/dashboard-further.git .
+            git init -b main
+            git remote add origin https://github.com/team40ngoro/dashboard-further.git 2>/dev/null || git remote set-url origin https://github.com/team40ngoro/dashboard-further.git
           else
-            echo "📥 1. Menarik pembaruan kode terbaru dari branch main..."
-            git fetch origin main
-            git reset --hard origin/main
+            git remote set-url origin https://github.com/team40ngoro/dashboard-further.git 2>/dev/null || true
           fi
+          
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
           
           echo "📦 2. Menginstal dependensi produksi..."
           npm ci --omit=dev
