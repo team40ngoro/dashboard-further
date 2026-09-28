@@ -72,6 +72,10 @@ jobs:
 
           cd "$DEPLOY_DIR"
           
+          # Konfigurasi Git safe directory untuk menghindari error dubious ownership
+          git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
+          git config --global --add safe.directory "*" 2>/dev/null || true
+
           # 3. Sinkronisasi repository secara aman (idempotent)
           echo "📥 1. Mengambil dan menyinkronkan kode terbaru dari repository GitHub..."
           if [ ! -d ".git" ]; then
