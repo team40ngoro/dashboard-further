@@ -64,28 +64,33 @@ jobs:
           
           echo "📁 Target direktori deployment: $DEPLOY_DIR"
           
-          # 2. Buat direktori jika belum ada
-          if [ ! -d "$DEPLOY_DIR" ]; then
-            echo "📁 Direktori $DEPLOY_DIR belum ada di server, membuat direktori..."
-            mkdir -p "$DEPLOY_DIR" || sudo mkdir -p "$DEPLOY_DIR"
-          fi
+          # 2. Buat direktori dan pastikan kepemilikan user
+          mkdir -p "$DEPLOY_DIR" 2>/dev/null || sudo mkdir -p "$DEPLOY_DIR"
+          chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || sudo chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || true
+          
+          # Konfigurasi safe directory di level global & system
+          git config --global --add safe.directory "*" 2>/dev/null || true
+          git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
+          sudo git config --system --add safe.directory "*" 2>/dev/null || true
+          sudo git config --system --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
 
           cd "$DEPLOY_DIR"
           
-          # Konfigurasi Git safe directory untuk menghindari error dubious ownership
-          git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
-          git config --global --add safe.directory "*" 2>/dev/null || true
-
-          # 3. Sinkronisasi repository secara aman (idempotent)
+          # 3. Sinkronisasi repository secara aman (idempotent & auto-recover)
           echo "📥 1. Mengambil dan menyinkronkan kode terbaru dari repository GitHub..."
-          if [ ! -d ".git" ]; then
+          export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+          
+          if [ ! -d ".git" ] || ! git status >/dev/null 2>&1; then
+            echo "🔧 Menginisialisasi ulang repositori Git di $DEPLOY_DIR..."
+            rm -rf .git
             git init -b main
+            git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
             git remote add origin https://github.com/team40ngoro/dashboard-further.git 2>/dev/null || git remote set-url origin https://github.com/team40ngoro/dashboard-further.git
           else
             git remote set-url origin https://github.com/team40ngoro/dashboard-further.git 2>/dev/null || true
           fi
           
-          git fetch origin main
+          git fetch origin main --force
           git reset --hard origin/main
           git clean -fd
           
