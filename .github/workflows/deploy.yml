@@ -54,7 +54,7 @@ jobs:
           echo "🚀 [CI/CD] Mulai proses deployment otomatis di server internal 10.68.8.219..."
           
           # 1. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
-          RAW_PATH="${{ secrets.DEPLOY_PATH || '/var/www/html/opt' }}"
+          RAW_PATH="${{ secrets.DEPLOY_PATH || '/opt' }}"
           DEPLOY_DIR=$(echo "$RAW_PATH" | sed -e 's/^cd //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           
           echo "📁 Target direktori deployment: $DEPLOY_DIR"
