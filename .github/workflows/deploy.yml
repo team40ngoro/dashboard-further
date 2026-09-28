@@ -62,7 +62,7 @@ jobs:
             echo "🚀 [CI/CD] Mulai proses deployment otomatis di server produksi..."
             
             # Tentukan direktori aplikasi di server
-            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '/var/www/further-dashboard' }}"
+            DEPLOY_DIR="${{ secrets.DEPLOY_PATH || '/var/www/html/opt' }}"
             
             if [ ! -d "$DEPLOY_DIR" ]; then
               echo "❌ Error: Direktori $DEPLOY_DIR tidak ditemukan di server!"
