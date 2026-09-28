@@ -6,10 +6,10 @@ async function listBranches() {
   return await query('SELECT * FROM branches ORDER BY id ASC');
 }
 
-async function createBranch({ code, name, city }) {
+async function createBranch({ code, name, city, accessCode = '1234' }) {
   const res = await query(
-    'INSERT INTO branches (code, name, city) VALUES (?, ?, ?)',
-    [code.trim().toUpperCase(), name.trim(), city ? city.trim() : null]
+    'INSERT INTO branches (code, name, city, access_code) VALUES (?, ?, ?, ?)',
+    [code.trim().toUpperCase(), name.trim(), city ? city.trim() : null, (accessCode || '1234').trim()]
   );
   return res;
 }
@@ -54,15 +54,15 @@ const adminController = {
   },
 
   handleCreateBranch: async (req, res) => {
-    const { code, name, city } = req.body;
+    const { code, name, city, accessCode } = req.body;
     if (!code || !name) {
       req.session.errorMessage = 'Kode dan Nama cabang wajib diisi.';
       return res.redirect('/admin/branches');
     }
 
     try {
-      await createBranch({ code, name, city });
-      req.session.successMessage = `Cabang ${name} (${code}) berhasil ditambahkan.`;
+      await createBranch({ code, name, city, accessCode: accessCode || '1234' });
+      req.session.successMessage = `Cabang ${name} (${code}) dengan PIN ${accessCode || '1234'} berhasil ditambahkan.`;
       res.redirect('/admin/branches');
     } catch (err) {
       console.error('Create branch error:', err);

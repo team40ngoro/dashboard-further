@@ -39,9 +39,15 @@
             <input type="text" name="name" id="name" class="form-input" placeholder="Contoh: CPI Food Palembang" required>
           </div>
 
-          <div class="form-group mb-4">
+          <div class="form-group mb-3">
             <label for="city" class="form-label font-semibold">Kota / Wilayah</label>
             <input type="text" name="city" id="city" class="form-input" placeholder="Contoh: Palembang">
+          </div>
+
+          <div class="form-group mb-4">
+            <label for="accessCode" class="form-label font-semibold">PIN Akses Upload Plant</label>
+            <input type="text" name="accessCode" id="accessCode" class="form-input font-mono" placeholder="4 Digit PIN (Default: 1234)" value="1234" required>
+            <div class="text-xs text-muted mt-1">Digunakan oleh operator pabrik saat mengunggah laporan Excel.</div>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block">
@@ -64,6 +70,7 @@
               <th>Kode</th>
               <th>Nama Cabang</th>
               <th>Kota</th>
+              <th>PIN Akses</th>
             </tr>
           </thead>
           <tbody>
@@ -73,6 +80,7 @@
                 <td><span class="badge badge-branch"><%= b.code %></span></td>
                 <td class="font-bold"><%= b.name %></td>
                 <td><%= b.city || '-' %></td>
+                <td><code class="font-bold text-primary"><%= b.access_code || '1234' %></code></td>
               </tr>
             <% }) %>
           </tbody>
