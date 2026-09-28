@@ -4,7 +4,7 @@
 <main class="main-content">
   <div class="content-header">
     <h1 class="page-title">Manajemen Cabang Produksi</h1>
-    <p class="page-subtitle">Kelola daftar cabang Food Division yang terdaftar dalam sistem.</p>
+    <p class="page-subtitle">Kelola seluruh daftar cabang dan PIN otorisasi plant Food Division.</p>
   </div>
 
   <% if (successMessage) { %>
@@ -71,9 +71,15 @@
               <th>Nama Cabang</th>
               <th>Kota</th>
               <th>PIN Akses</th>
+              <th class="text-center" style="width: 130px;">Aksi</th>
             </tr>
           </thead>
           <tbody>
+            <% if (branches.length === 0) { %>
+              <tr>
+                <td colspan="6" class="text-center py-6 text-muted">Belum ada cabang terdaftar.</td>
+              </tr>
+            <% } %>
             <% branches.forEach(b => { %>
               <tr>
                 <td>#<%= b.id %></td>
@@ -81,6 +87,16 @@
                 <td class="font-bold"><%= b.name %></td>
                 <td><%= b.city || '-' %></td>
                 <td><code class="font-bold text-primary"><%= b.access_code || '1234' %></code></td>
+                <td>
+                  <div class="table-actions-cell justify-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditBranchModal(<%= b.id %>, '<%= b.code %>', '<%= b.name.replace(/'/g, "\\'") %>', '<%= (b.city || '').replace(/'/g, "\\'") %>', '<%= b.access_code || '1234' %>')" title="Edit Cabang">
+                      Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDeleteBranch(<%= b.id %>, '<%= b.name.replace(/'/g, "\\'") %>', '<%= b.code %>')" title="Hapus Cabang">
+                      Hapus
+                    </button>
+                  </div>
+                </td>
               </tr>
             <% }) %>
           </tbody>
@@ -89,5 +105,98 @@
     </div>
   </div>
 </main>
+
+<!-- Hidden Form for Delete -->
+<form id="deleteBranchForm" method="POST" style="display: none;"></form>
+
+<!-- Modal Edit Cabang -->
+<div class="modal-backdrop" id="editBranchModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Data Cabang</h3>
+      <button type="button" class="modal-close-btn" onclick="closeEditBranchModal()">&times;</button>
+    </div>
+    <form id="editBranchForm" method="POST">
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label for="edit_code" class="form-label font-semibold">Kode Cabang</label>
+          <input type="text" name="code" id="edit_code" class="form-input" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="edit_name" class="form-label font-semibold">Nama Pabrik / Cabang</label>
+          <input type="text" name="name" id="edit_name" class="form-input" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="edit_city" class="form-label font-semibold">Kota / Wilayah</label>
+          <input type="text" name="city" id="edit_city" class="form-input">
+        </div>
+
+        <div class="form-group mb-2">
+          <label for="edit_accessCode" class="form-label font-semibold">PIN Akses Upload Plant</label>
+          <input type="text" name="accessCode" id="edit_accessCode" class="form-input font-mono" required>
+          <div class="text-xs text-muted mt-1">Operator pabrik wajib memasukkan PIN ini saat mengunggah LPP.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeEditBranchModal()">Batal</button>
+        <button type="submit" class="btn btn-primary btn-sm">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openEditBranchModal(id, code, name, city, accessCode) {
+    const modal = document.getElementById('editBranchModal');
+    const form = document.getElementById('editBranchForm');
+    form.action = `/admin/branches/${id}/update`;
+    document.getElementById('edit_code').value = code;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_city').value = city;
+    document.getElementById('edit_accessCode').value = accessCode;
+    modal.classList.add('active');
+  }
+
+  function closeEditBranchModal() {
+    const modal = document.getElementById('editBranchModal');
+    modal.classList.remove('active');
+  }
+
+  // Close modal when clicking backdrop
+  document.getElementById('editBranchModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeEditBranchModal();
+    }
+  });
+
+  async function confirmDeleteBranch(id, name, code) {
+    if (typeof Swal !== 'undefined') {
+      const result = await Swal.fire({
+        title: 'Hapus Cabang?',
+        html: `Apakah Anda yakin ingin menghapus cabang <strong>${name} (${code})</strong>?<br><small class="text-muted">Cabang yang memiliki riwayat batch produksi tidak dapat dihapus.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Cabang',
+        cancelButtonText: 'Batal'
+      });
+
+      if (result.isConfirmed) {
+        const form = document.getElementById('deleteBranchForm');
+        form.action = `/admin/branches/${id}/delete`;
+        form.submit();
+      }
+    } else {
+      if (confirm(`Apakah Anda yakin ingin menghapus cabang ${name} (${code})?`)) {
+        const form = document.getElementById('deleteBranchForm');
+        form.action = `/admin/branches/${id}/delete`;
+        form.submit();
+      }
+    }
+  }
+</script>
 
 <%- include('../layouts/footer') %>

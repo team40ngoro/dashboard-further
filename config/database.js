@@ -204,8 +204,43 @@ function runMockQuery(sql, params = []) {
     return { insertId: newId, affectedRows: 1 };
   }
 
+  // UPDATE branches
+  if (upper.startsWith('UPDATE BRANCHES')) {
+    const id = params[params.length - 1];
+    const branch = mockStorage.branches.find(b => b.id === Number(id));
+    if (branch) {
+      if (params.length === 5) {
+        branch.code = params[0] ? params[0].trim().toUpperCase() : branch.code;
+        branch.name = params[1] ? params[1].trim() : branch.name;
+        branch.city = params[2] !== undefined ? (params[2] ? params[2].trim() : null) : branch.city;
+        branch.access_code = params[3] ? params[3].trim() : branch.access_code;
+      }
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+
+  // DELETE FROM branches
+  if (upper.startsWith('DELETE FROM BRANCHES')) {
+    const id = params[0];
+    const idx = mockStorage.branches.findIndex(b => b.id === Number(id));
+    if (idx !== -1) {
+      mockStorage.branches.splice(idx, 1);
+      mockStorage.users.forEach(u => {
+        if (u.branch_id === Number(id)) u.branch_id = null;
+      });
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+
   // SELECT from production_batches
   if (upper.startsWith('SELECT') && upper.includes('FROM PRODUCTION_BATCHES')) {
+    if (upper.includes('COUNT(*)')) {
+      const branchId = params[0];
+      const count = mockStorage.production_batches.filter(b => b.branch_id === Number(branchId)).length;
+      return [{ count, total: count }];
+    }
     if (upper.includes('FILE_HASH =')) {
       const [branchId, hash] = params;
       return mockStorage.production_batches.filter(b => b.branch_id === Number(branchId) && b.file_hash === hash);

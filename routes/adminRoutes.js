@@ -9,6 +9,8 @@ router.use(requireAuth, requireRole([ROLES.ADMIN_PUSAT]));
 
 router.get('/admin/branches', adminController.renderBranches);
 router.post('/admin/branches', adminController.handleCreateBranch);
+router.post('/admin/branches/:id/update', adminController.handleUpdateBranch);
+router.post('/admin/branches/:id/delete', adminController.handleDeleteBranch);
 
 router.get('/admin/users', adminController.renderUsers);
 router.post('/admin/users', adminController.handleCreateUser);
