@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 
-// In open / no-login mode, redirect /login and /logout to /dashboard
-router.get('/login', (req, res) => res.redirect('/dashboard'));
+// Authentication routes
+router.get('/login', authController.renderLogin);
 router.post('/login', authController.handleLogin);
-router.get('/logout', (req, res) => res.redirect('/dashboard'));
+router.get('/logout', authController.handleLogout);
 
 module.exports = router;
