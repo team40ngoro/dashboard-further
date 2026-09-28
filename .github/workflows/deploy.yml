@@ -53,41 +53,39 @@ jobs:
         run: |
           echo "🚀 [CI/CD] Mulai proses deployment otomatis di server internal 10.68.8.219..."
           
-          # 1. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
+          # 1. Bypass awal untuk aturan safe directory global
+          git config --global --add safe.directory '*'
+          
+          # 2. Bersihkan path jika ada kata 'cd ' atau spasi ekstra
           RAW_PATH="${{ secrets.DEPLOY_PATH || '/opt/further-dashboard' }}"
           DEPLOY_DIR=$(echo "$RAW_PATH" | sed -e 's/^cd //' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           
-          # Jika DEPLOY_DIR bernilai '/opt' atau kosong, arahkan ke subfolder khusus aplikasi
           if [ "$DEPLOY_DIR" = "/opt" ] || [ "$DEPLOY_DIR" = "/opt/" ] || [ -z "$DEPLOY_DIR" ]; then
             DEPLOY_DIR="/opt/further-dashboard"
           fi
           
           echo "📁 Target direktori deployment: $DEPLOY_DIR"
           
-          # 2. Buat direktori dan pastikan kepemilikan user
+          # 3. Buat direktori dan pastikan kepemilikan user
           mkdir -p "$DEPLOY_DIR" 2>/dev/null || sudo mkdir -p "$DEPLOY_DIR"
-          chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || sudo chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || true
-          
-          # Konfigurasi safe directory di level global & system
-          git config --global --add safe.directory "*" 2>/dev/null || true
-          git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
-          sudo git config --system --add safe.directory "*" 2>/dev/null || true
-          sudo git config --system --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
+          sudo chown -R $(whoami) "$DEPLOY_DIR" 2>/dev/null || true
 
+          # Masuk ke direktori target
           cd "$DEPLOY_DIR"
           
-          # 3. Sinkronisasi repository secara aman (idempotent & auto-recover)
-          echo "📥 1. Mengambil dan menyinkronkan kode terbaru dari repository GitHub..."
-          export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+          # 4. Daftarkan direktori ini ke safe.directory setelah masuk
+          git config --global --add safe.directory "$DEPLOY_DIR"
           
-          if [ ! -d ".git" ] || ! git status >/dev/null 2>&1; then
+          # 5. Sinkronisasi repository secara aman
+          echo "📥 1. Mengambil dan menyinkronkan kode terbaru dari repository GitHub..."
+          
+          if [ ! -d ".git" ]; then
             echo "🔧 Menginisialisasi ulang repositori Git di $DEPLOY_DIR..."
             rm -rf .git
             git init -b main
-            git config --global --add safe.directory "$DEPLOY_DIR" 2>/dev/null || true
-            git remote add origin https://github.com/team40ngoro/dashboard-further.git 2>/dev/null || git remote set-url origin https://github.com/team40ngoro/dashboard-further.git
+            git remote add origin https://github.com/team40ngoro/dashboard-further.git
           else
-            git remote set-url origin https://github.com/team40ngoro/dashboard-further.git 2>/dev/null || true
+            git remote set-url origin https://github.com/team40ngoro/dashboard-further.git
           fi
           
           git fetch origin main --force
